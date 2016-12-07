@@ -347,7 +347,9 @@ PyErr_SetFromErrnoWithFilenameObject(PyObject *exc, PyObject *filenameObject)
         }
         else {
             int len = FormatMessage(
+#ifndef MS_UWP
                 FORMAT_MESSAGE_ALLOCATE_BUFFER |
+#endif
                 FORMAT_MESSAGE_FROM_SYSTEM |
                 FORMAT_MESSAGE_IGNORE_INSERTS,
                 NULL,                   /* no message source */
@@ -382,7 +384,7 @@ PyErr_SetFromErrnoWithFilenameObject(PyObject *exc, PyObject *filenameObject)
         PyErr_SetObject(exc, v);
         Py_DECREF(v);
     }
-#ifdef MS_WINDOWS
+#if defined(MS_WINDOWS) && !defined(MS_UWP)
     LocalFree(s_buf);
 #endif
     return NULL;
@@ -418,51 +420,96 @@ PyErr_SetFromErrno(PyObject *exc)
 }
 
 #ifdef MS_WINDOWS
+
 /* Windows specific error code handling */
 PyObject *PyErr_SetExcFromWindowsErrWithFilenameObject(
     PyObject *exc,
     int ierr,
     PyObject *filenameObject)
 {
+    return PyErr_SetExcFromWindowsErrWithFilenameObjects(exc, ierr,
+        filenameObject, NULL);
+}
+
+PyObject *PyErr_SetExcFromWindowsErrWithFilenameObjects(
+    PyObject *exc,
+    int ierr,
+    PyObject *filenameObject,
+    PyObject *filenameObject2)
+{
     int len;
-    char *s;
-    char *s_buf = NULL; /* Free via LocalFree */
-    char s_small_buf[28]; /* Room for "Windows Error 0xFFFFFFFF" */
-    PyObject *v;
+#ifndef MS_UWP
+    const int s_buf_len = 0;
+    WCHAR *s_buf = NULL; /* Free via LocalFree */
+#else
+    const int s_buf_len = 512;
+    WCHAR s_buf_actual[512];
+    WCHAR *s_buf = s_buf_actual; /* Don't free via LocalFree */
+#endif
+    PyObject *message;
+    PyObject *args, *v;
     DWORD err = (DWORD)ierr;
-    if (err==0) err = GetLastError();
-    len = FormatMessage(
+    if (err == 0) err = GetLastError();
+    len = FormatMessageW(
         /* Error API error */
+#ifndef MS_UWP
         FORMAT_MESSAGE_ALLOCATE_BUFFER |
+#endif
         FORMAT_MESSAGE_FROM_SYSTEM |
         FORMAT_MESSAGE_IGNORE_INSERTS,
         NULL,           /* no message source */
         err,
         MAKELANGID(LANG_NEUTRAL,
-        SUBLANG_DEFAULT), /* Default language */
-        (LPTSTR) &s_buf,
-        0,              /* size not used */
+            SUBLANG_DEFAULT), /* Default language */
+#ifndef MS_UWP
+            (LPWSTR) &s_buf,
+#else
+        s_buf,
+#endif
+        s_buf_len,
         NULL);          /* no args */
-    if (len==0) {
+    if (len == 0) {
         /* Only seen this in out of mem situations */
-        sprintf(s_small_buf, "Windows Error 0x%X", err);
-        s = s_small_buf;
+        message = PyUnicode_FromFormat("Windows Error 0x%x", err);
         s_buf = NULL;
-    } else {
-        s = s_buf;
+    }
+    else {
         /* remove trailing cr/lf and dots */
-        while (len > 0 && (s[len-1] <= ' ' || s[len-1] == '.'))
-            s[--len] = '\0';
+        while (len > 0 && (s_buf[len - 1] <= L' ' || s_buf[len - 1] == L'.'))
+            s_buf[--len] = L'\0';
+        message = PyUnicode_FromWideChar(s_buf, len);
     }
-    if (filenameObject != NULL)
-        v = Py_BuildValue("(isO)", err, s, filenameObject);
-    else
-        v = Py_BuildValue("(is)", err, s);
-    if (v != NULL) {
-        PyErr_SetObject(exc, v);
-        Py_DECREF(v);
+
+    if (message == NULL)
+    {
+#ifndef MS_UWP
+        LocalFree(s_buf);
+#endif
+        return NULL;
     }
+
+    if (filenameObject == NULL) {
+        assert(filenameObject2 == NULL);
+        filenameObject = filenameObject2 = Py_None;
+    }
+    else if (filenameObject2 == NULL)
+        filenameObject2 = Py_None;
+    /* This is the constructor signature for OSError.
+    The POSIX translation will be figured out by the constructor. */
+    args = Py_BuildValue("(iOOiO)", 0, message, filenameObject, err, filenameObject2);
+    Py_DECREF(message);
+
+    if (args != NULL) {
+        v = PyObject_Call(exc, args, NULL);
+        Py_DECREF(args);
+        if (v != NULL) {
+            PyErr_SetObject((PyObject *)Py_TYPE(v), v);
+            Py_DECREF(v);
+        }
+    }
+#ifndef MS_UWP
     LocalFree(s_buf);
+#endif
     return NULL;
 }
 

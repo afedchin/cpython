@@ -83,6 +83,7 @@ PySys_SetObject(char *name, PyObject *v)
         return PyDict_SetItemString(sd, name, v);
 }
 
+
 static PyObject *
 sys_displayhook(PyObject *self, PyObject *o)
 {
@@ -596,15 +597,17 @@ sys_getwindowsversion(PyObject *self)
 {
     PyObject *version;
     int pos = 0;
+#ifndef MS_UWP
     OSVERSIONINFOEX ver;
     ver.dwOSVersionInfoSize = sizeof(ver);
     if (!GetVersionEx((OSVERSIONINFO*) &ver))
         return PyErr_SetFromWindowsErr(0);
-
+#endif
     version = PyStructSequence_New(&WindowsVersionType);
     if (version == NULL)
         return NULL;
 
+#ifndef MS_UWP
     PyStructSequence_SET_ITEM(version, pos++, PyInt_FromLong(ver.dwMajorVersion));
     PyStructSequence_SET_ITEM(version, pos++, PyInt_FromLong(ver.dwMinorVersion));
     PyStructSequence_SET_ITEM(version, pos++, PyInt_FromLong(ver.dwBuildNumber));
@@ -614,6 +617,17 @@ sys_getwindowsversion(PyObject *self)
     PyStructSequence_SET_ITEM(version, pos++, PyInt_FromLong(ver.wServicePackMinor));
     PyStructSequence_SET_ITEM(version, pos++, PyInt_FromLong(ver.wSuiteMask));
     PyStructSequence_SET_ITEM(version, pos++, PyInt_FromLong(ver.wProductType));
+#else
+    PyStructSequence_SET_ITEM(version, pos++, PyLong_FromLong(6));
+    PyStructSequence_SET_ITEM(version, pos++, PyLong_FromLong(2));
+    PyStructSequence_SET_ITEM(version, pos++, PyLong_FromLong(9200));
+    PyStructSequence_SET_ITEM(version, pos++, PyLong_FromLong(2));
+    PyStructSequence_SET_ITEM(version, pos++, PyUnicode_FromString(""));
+    PyStructSequence_SET_ITEM(version, pos++, PyLong_FromLong(0));
+    PyStructSequence_SET_ITEM(version, pos++, PyLong_FromLong(0));
+    PyStructSequence_SET_ITEM(version, pos++, PyLong_FromLong(256));
+    PyStructSequence_SET_ITEM(version, pos++, PyLong_FromLong(1));
+#endif
 
     if (PyErr_Occurred()) {
         Py_DECREF(version);
@@ -1620,7 +1634,7 @@ PySys_SetArgvEx(int argc, char **argv, int updatepath)
 {
 #if defined(HAVE_REALPATH)
     char fullpath[MAXPATHLEN];
-#elif defined(MS_WINDOWS) && !defined(MS_WINCE)
+#elif defined(MS_WINDOWS) && !defined(MS_WINCE) && !defined(MS_UWP)
     char fullpath[MAX_PATH];
 #endif
     PyObject *av = makeargvobject(argc, argv);
@@ -1665,7 +1679,7 @@ PySys_SetArgvEx(int argc, char **argv, int updatepath)
 #if SEP == '\\' /* Special case for MS filename syntax */
         if (argc > 0 && argv0 != NULL && strcmp(argv0, "-c") != 0) {
             char *q;
-#if defined(MS_WINDOWS) && !defined(MS_WINCE)
+#if defined(MS_WINDOWS) && !defined(MS_WINCE) && !defined(MS_UWP)
             /* This code here replaces the first element in argv with the full
             path that it represents. Under CE, there are no relative paths so
             the argument must be the full path anyway. */

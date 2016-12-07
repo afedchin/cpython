@@ -295,7 +295,7 @@ init_multiprocessing(void)
     PyModule_AddObject(module, "SemLock", (PyObject*)&SemLockType);
 #endif
 
-#ifdef MS_WINDOWS
+#if defined(MS_WINDOWS)  && defined(HAVE_PIPES)
     /* Add PipeConnection to module */
     if (PyType_Ready(&PipeConnectionType) < 0)
         return;
@@ -315,10 +315,12 @@ init_multiprocessing(void)
         PyErr_SetFromWindowsErr(0);
         return;
     }
+#ifndef MS_UWP
     if (!SetConsoleCtrlHandler(ProcessingCtrlHandler, TRUE)) {
         PyErr_SetFromWindowsErr(0);
         return;
     }
+#endif /* MS_UWP */
 #endif
 
     /* Add configuration macros */

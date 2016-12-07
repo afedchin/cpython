@@ -4015,7 +4015,7 @@ _PyString_FormatLong(PyObject *val, int flags, int prec, int type,
     Py_ssize_t llen;
     int numdigits;      /* len == numnondigits + skipped + numdigits */
     int numnondigits, skipped, filled;
-    const char *method;
+    const char *method = NULL;
 
     switch (type) {
     case 'd':
@@ -4300,7 +4300,7 @@ PyString_Format(PyObject *format, PyObject *args)
             int isnumok;
             PyObject *v = NULL;
             PyObject *temp = NULL;
-            char *pbuf;
+            char *pbuf = NULL;
             int sign;
             Py_ssize_t len;
             char formatbuf[FORMATBUFLEN];

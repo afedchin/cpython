@@ -614,7 +614,7 @@ static Py_ssize_t
 read_cStringIO(Unpicklerobject *self, char **s, Py_ssize_t  n)
 {
     Py_ssize_t len = n;
-    char *start, *end = NULL;
+    char *start = NULL, *end = NULL;
 
     while (1) {
         int k;

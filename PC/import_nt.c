@@ -33,9 +33,11 @@ FILE *PyWin_FindRegisteredModule(const char *moduleName,
 #endif
     struct filedescr *fdp = NULL;
     FILE *fp;
+#ifndef MS_UWP
     HKEY keyBase = HKEY_CURRENT_USER;
-    int modNameSize;
     long regStat;
+#endif
+    int modNameSize;
 
     /* Calculate the size for the sprintf buffer.
      * Get the size of the chars only, plus 1 NULL.
@@ -55,6 +57,8 @@ FILE *PyWin_FindRegisteredModule(const char *moduleName,
 
     assert(pathLen < INT_MAX);
     modNameSize = (int)pathLen;
+#ifndef MS_UWP
+
     regStat = RegQueryValue(keyBase, moduleKey, pathBuf, &modNameSize);
     if (regStat != ERROR_SUCCESS) {
         /* No user setting - lookup in machine settings */
@@ -67,6 +71,7 @@ FILE *PyWin_FindRegisteredModule(const char *moduleName,
         if (regStat != ERROR_SUCCESS)
             return NULL;
     }
+#endif
     /* use the file extension to locate the type entry. */
     for (fdp = _PyImport_Filetab; fdp->suffix != NULL; fdp++) {
         size_t extLen = strlen(fdp->suffix);

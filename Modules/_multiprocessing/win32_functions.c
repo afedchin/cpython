@@ -35,6 +35,7 @@ win32_CloseHandle(PyObject *self, PyObject *args)
     Py_RETURN_NONE;
 }
 
+#ifdef HAVE_PIPES
 static PyObject *
 win32_ConnectNamedPipe(PyObject *self, PyObject *args)
 {
@@ -55,6 +56,7 @@ win32_ConnectNamedPipe(PyObject *self, PyObject *args)
 
     Py_RETURN_NONE;
 }
+#endif
 
 static PyObject *
 win32_CreateFile(PyObject *self, PyObject *args)
@@ -76,10 +78,16 @@ win32_CreateFile(PyObject *self, PyObject *args)
         return NULL;
 
     Py_BEGIN_ALLOW_THREADS
+#ifdef MS_UWP
+    handle = CreateFile2(lpFileName, dwDesiredAccess, dwShareMode, OPEN_EXISTING, NULL);
+#else
     handle = CreateFile(lpFileName, dwDesiredAccess,
                         dwShareMode, lpSecurityAttributes,
                         dwCreationDisposition,
                         dwFlagsAndAttributes, hTemplateFile);
+#endif
+
+
     Py_END_ALLOW_THREADS
 
     if (handle == INVALID_HANDLE_VALUE)
@@ -88,6 +96,7 @@ win32_CreateFile(PyObject *self, PyObject *args)
     return Py_BuildValue(F_HANDLE, handle);
 }
 
+#ifdef HAVE_PIPES
 static PyObject *
 win32_CreateNamedPipe(PyObject *self, PyObject *args)
 {
@@ -121,10 +130,17 @@ win32_CreateNamedPipe(PyObject *self, PyObject *args)
 
     return Py_BuildValue(F_HANDLE, handle);
 }
+#endif
 
 static PyObject *
 win32_ExitProcess(PyObject *self, PyObject *args)
 {
+#ifdef MS_UWP
+    PyErr_WarnEx(PyExc_DeprecationWarning,
+        "win32_ExitProcess has been deprecated for UWP apps, "
+        "use absolute paths instead.",
+        0);
+#else
     UINT uExitCode;
 
     if (!PyArg_ParseTuple(args, "I", &uExitCode))
@@ -137,6 +153,7 @@ win32_ExitProcess(PyObject *self, PyObject *args)
 
 
     ExitProcess(uExitCode);
+#endif
 
     return NULL;
 }
@@ -165,6 +182,8 @@ win32_OpenProcess(PyObject *self, PyObject *args)
 
     return Py_BuildValue(F_HANDLE, handle);
 }
+
+#ifdef HAVE_PIPES
 
 static PyObject *
 win32_SetNamedPipeHandleState(PyObject *self, PyObject *args)
@@ -214,17 +233,22 @@ win32_WaitNamedPipe(PyObject *self, PyObject *args)
 
     Py_RETURN_NONE;
 }
+#endif
 
 static PyMethodDef win32_methods[] = {
     WIN32_FUNCTION(CloseHandle),
     WIN32_FUNCTION(GetLastError),
     WIN32_FUNCTION(OpenProcess),
     WIN32_FUNCTION(ExitProcess),
+#ifdef HAVE_PIPES
     WIN32_FUNCTION(ConnectNamedPipe),
+#endif
     WIN32_FUNCTION(CreateFile),
+#ifdef HAVE_PIPES
     WIN32_FUNCTION(CreateNamedPipe),
     WIN32_FUNCTION(SetNamedPipeHandleState),
     WIN32_FUNCTION(WaitNamedPipe),
+#endif
     {NULL}
 };
 

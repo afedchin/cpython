@@ -498,7 +498,7 @@ _PyCode_ConstantKey(PyObject *op)
     }
     else if (PyFrozenSet_CheckExact(op)) {
         Py_ssize_t pos = 0;
-        PyObject *item;
+        PyObject *item = NULL;
         long hash;
         Py_ssize_t i, len;
         PyObject *tuple, *set;

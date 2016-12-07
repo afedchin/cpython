@@ -1,5 +1,11 @@
 #include "Python.h"
 
+#if defined(MS_UWP)
+extern char* win10_getenv(const char* n);
+#define getenv(v) win10_getenv
+#endif
+
+
 #if defined(__has_feature)  /* Clang */
  #if __has_feature(address_sanitizer)  /* is ASAN enabled? */
   #define ATTRIBUTE_NO_ADDRESS_SAFETY_ANALYSIS \

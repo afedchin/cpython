@@ -288,9 +288,10 @@ _pythread_nt_set_stacksize(size_t size)
 
 #define THREAD_SET_STACKSIZE(x) _pythread_nt_set_stacksize(x)
 
-
+#ifndef MS_UWP
 /* use native Windows TLS functions */
 #define Py_HAVE_NATIVE_TLS
+#endif
 
 #ifdef Py_HAVE_NATIVE_TLS
 int

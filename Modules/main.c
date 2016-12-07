@@ -15,6 +15,16 @@
 #endif
 #endif
 
+#if defined(MS_UWP)
+/* UWP apps do not have environment variables */
+extern char* win10_getenv(const char* n);
+#define getenv(v) win10_getenv
+#undef environ
+#define environ (NULL)
+/* getpid is not available, but GetCurrentProcessId is */
+#define getpid GetCurrentProcessId
+#endif
+
 #if (defined(PYOS_OS2) && !defined(PYCC_GCC)) || defined(MS_WINDOWS)
 #define PYTHONHOMEHELP "<prefix>\\lib"
 #else

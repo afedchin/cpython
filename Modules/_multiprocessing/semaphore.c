@@ -24,6 +24,15 @@ typedef struct {
 
 #ifdef MS_WINDOWS
 
+#ifdef MS_UWP
+int GetTickCount(void)
+{
+    LARGE_INTEGER t;
+    return(int)(QueryPerformanceCounter(&t) ? t.QuadPart : 0);
+}
+#endif
+
+
 /*
  * Windows definitions
  */

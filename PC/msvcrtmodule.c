@@ -160,6 +160,8 @@ PyDoc_STRVAR(get_osfhandle_doc,
 Return the file handle for the file descriptor fd. Raises IOError\n\
 if fd is not recognized.");
 
+#if !defined(MS_UWP)
+
 /* Console I/O */
 
 static PyObject *
@@ -358,6 +360,8 @@ PyDoc_STRVAR(ungetwch_doc,
 Wide char variant of ungetch(), accepting a Unicode value.");
 #endif
 
+#endif
+
 static void
 insertint(PyObject *d, char *name, int value)
 {
@@ -380,6 +384,7 @@ static struct PyMethodDef msvcrt_functions[] = {
     {"setmode",                 msvcrt_setmode, METH_VARARGS, setmode_doc},
     {"open_osfhandle",          msvcrt_open_osfhandle, METH_VARARGS, open_osfhandle_doc},
     {"get_osfhandle",           msvcrt_get_osfhandle, METH_VARARGS, get_osfhandle_doc},
+#ifndef MS_UWP
     {"kbhit",                   msvcrt_kbhit, METH_VARARGS, kbhit_doc},
     {"getch",                   msvcrt_getch, METH_VARARGS, getch_doc},
     {"getche",                  msvcrt_getche, METH_VARARGS, getche_doc},
@@ -391,13 +396,16 @@ static struct PyMethodDef msvcrt_functions[] = {
     {"putwch",                  msvcrt_putwch, METH_VARARGS, putwch_doc},
     {"ungetwch",                msvcrt_ungetwch, METH_VARARGS, ungetwch_doc},
 #endif
+#endif /* !MS_UWP */
     {NULL,                      NULL}
 };
 
 PyMODINIT_FUNC
 initmsvcrt(void)
 {
+#ifndef MS_UWP
     int st;
+#endif
     PyObject *d;
     PyObject *m = Py_InitModule("msvcrt", msvcrt_functions);
     if (m == NULL)

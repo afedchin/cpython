@@ -2472,7 +2472,7 @@ textiowrapper_close(textio *self, PyObject *args)
         Py_RETURN_NONE; /* stream already closed */
     }
     else {
-        PyObject *exc = NULL, *val, *tb;
+        PyObject *exc = NULL, *val = NULL, *tb = NULL;
         res = PyObject_CallMethod((PyObject *)self, "flush", NULL);
         if (res == NULL)
             PyErr_Fetch(&exc, &val, &tb);

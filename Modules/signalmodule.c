@@ -23,6 +23,17 @@
 #include <sys/time.h>
 #endif
 
+#if defined(MS_UWP)
+/* UWP apps do not have environment variables */
+extern char* win10_getenv(const char* n);
+#define getenv(v) win10_getenv
+#undef environ
+#define environ (NULL)
+/* getpid is not available, but GetCurrentProcessId is */
+#define getpid GetCurrentProcessId
+#endif
+
+
 #ifndef SIG_ERR
 #define SIG_ERR ((PyOS_sighandler_t)(-1))
 #endif

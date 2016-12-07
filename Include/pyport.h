@@ -397,6 +397,12 @@ typedef Py_intptr_t     Py_ssize_t;
 #define S_IFMT (S_IFDIR|S_IFCHR|S_IFREG)
 #endif
 
+#ifndef S_IFLNK
+/* Windows doesn't define S_IFLNK but posixmodule.c maps
+* IO_REPARSE_TAG_SYMLINK to S_IFLNK */
+#  define S_IFLNK 0120000
+#endif
+
 #ifndef S_ISREG
 #define S_ISREG(x) (((x) & S_IFMT) == S_IFREG)
 #endif

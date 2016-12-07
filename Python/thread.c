@@ -7,6 +7,12 @@
 
 #include "Python.h"
 
+#if defined(MS_UWP)
+/* UWP apps do not have environment variables */
+extern char* win10_getenv(const char* n);
+#define getenv(v) win10_getenv
+#endif
+
 
 #ifndef _POSIX_THREADS
 /* This means pthreads are not implemented in libc headers, hence the macro

@@ -18,6 +18,8 @@ char dllVersionBuffer[16] = ""; // a private buffer
 HMODULE PyWin_DLLhModule = NULL;
 const char *PyWin_DLLVersionString = dllVersionBuffer;
 
+#if HAVE_SXS
+
 // Windows "Activation Context" work:
 // Our .pyd extension modules are generally built without a manifest (ie,
 // those included with Python and those built with a default distutils.
@@ -76,6 +78,9 @@ void _Py_DeactivateActCtx(ULONG_PTR cookie)
             OutputDebugString("Python failed to de-activate the activation context\n");
 }
 
+#endif /* HAVE_SXS */
+
+
 BOOL    WINAPI  DllMain (HANDLE hInst,
                                                 ULONG ul_reason_for_call,
                                                 LPVOID lpReserved)
@@ -84,20 +89,26 @@ BOOL    WINAPI  DllMain (HANDLE hInst,
     {
         case DLL_PROCESS_ATTACH:
             PyWin_DLLhModule = hInst;
+#if !defined(MS_DLL_ID) && !defined(MS_UWP)
             // 1000 is a magic number I picked out of the air.  Could do with a #define, I spose...
             LoadString(hInst, 1000, dllVersionBuffer, sizeof(dllVersionBuffer));
+#endif
 
+#if HAVE_SXS
             // and capture our activation context for use when loading extensions.
             _LoadActCtxPointers();
             if (pfnGetCurrentActCtx && pfnAddRefActCtx)
                 if ((*pfnGetCurrentActCtx)(&PyWin_DLLhActivationContext))
                     if (!(*pfnAddRefActCtx)(PyWin_DLLhActivationContext))
                         OutputDebugString("Python failed to load the default activation context\n");
+#endif
             break;
 
         case DLL_PROCESS_DETACH:
+#if HAVE_SXS
             if (pfnReleaseActCtx)
                 (*pfnReleaseActCtx)(PyWin_DLLhActivationContext);
+#endif
             break;
     }
     return TRUE;

@@ -147,7 +147,7 @@ frame_setlineno(PyFrameObject *f, PyObject* p_new_lineno)
     else {
         /* Find the bytecode offset for the start of the given
          * line, or the first code-owning line after it. */
-        char *tmp;
+        char *tmp = NULL;
         PyString_AsStringAndSize(f->f_code->co_lnotab,
                                  &tmp, &lnotab_len);
         lnotab = (unsigned char *) tmp;

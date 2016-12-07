@@ -63,7 +63,9 @@ extern void init_codecs_iso2022(void);
 extern void init_codecs_jp(void);
 extern void init_codecs_kr(void);
 extern void init_codecs_tw(void);
+#ifndef MS_UWP
 extern void init_subprocess(void);
+#endif
 extern void init_lsprof(void);
 extern void init_ast(void);
 extern void init_io(void);
@@ -112,8 +114,9 @@ struct _inittab _PyImport_Inittab[] = {
     {"_locale", init_locale},
 #endif
     /* XXX Should _subprocess go in a WIN32 block?  not WIN64? */
+#ifndef MS_UWP
     {"_subprocess", init_subprocess},
-
+#endif
     {"_codecs", init_codecs},
     {"_weakref", init_weakref},
     {"_hotshot", init_hotshot},
@@ -128,7 +131,9 @@ struct _inittab _PyImport_Inittab[] = {
     {"_csv", init_csv},
     {"_sre", init_sre},
     {"parser", initparser},
+#ifndef MS_UWP
     {"_winreg", init_winreg},
+#endif
     {"_struct", init_struct},
     {"datetime", initdatetime},
     {"_functools", init_functools},

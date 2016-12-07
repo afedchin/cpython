@@ -17,6 +17,8 @@
 #include "malloc.h" /* for alloca */
 #include "windows.h"
 
+#ifndef MS_UWP
+
 static BOOL PyHKEY_AsHKEY(PyObject *ob, HKEY *pRes, BOOL bNoneOK);
 static PyObject *PyHKEY_FromHKEY(HKEY h);
 static BOOL PyHKEY_Close(PyObject *obHandle);
@@ -1870,4 +1872,7 @@ PyMODINIT_FUNC init_winreg(void)
     ADD_INT(REG_FULL_RESOURCE_DESCRIPTOR);
     ADD_INT(REG_RESOURCE_REQUIREMENTS_LIST);
 }
+
+#endif /* MS_UWP */
+
 

@@ -380,7 +380,7 @@ PyLocale_strxfrm(PyObject* self, PyObject* args)
     return result;
 }
 
-#if defined(MS_WINDOWS)
+#if defined(MS_WINDOWS)  && !defined(MS_UWP)
 static PyObject*
 PyLocale_getdefaultlocale(PyObject* self)
 {
@@ -409,6 +409,30 @@ PyLocale_getdefaultlocale(PyObject* self)
     if (GetLocaleInfo(LOCALE_USER_DEFAULT, LOCALE_IDEFAULTLANGUAGE,
                       locale+2, sizeof(locale)-2)) {
         return Py_BuildValue("ss", locale, encoding);
+    }
+
+    /* cannot determine the language code (very unlikely) */
+    Py_INCREF(Py_None);
+    return Py_BuildValue("Os", Py_None, encoding);
+}
+#endif
+
+#if defined(MS_UWP)
+static PyObject*
+PyLocale_getdefaultlocale(PyObject* self)
+{
+    const wchar_t *encoding = L"utf8";
+    wchar_t locale[100];
+
+    if (GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT,
+        LOCALE_SISO639LANGNAME,
+        locale, (sizeof(locale) / sizeof(locale[0])))) {
+        Py_ssize_t i = wcslen(locale);
+        locale[i++] = '_';
+        if (GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT,
+            LOCALE_SISO3166CTRYNAME,
+            locale + i, (int)((sizeof(locale) / sizeof(locale[0])) - i)))
+            return Py_BuildValue("uu", locale, encoding);
     }
 
     /* cannot determine the language code (very unlikely) */

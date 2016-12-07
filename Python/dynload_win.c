@@ -12,8 +12,10 @@
 #include <windows.h>
 
 // "activation context" magic - see dl_nt.c...
+#if HAVE_SXS
 extern ULONG_PTR _Py_ActivateActCtx();
 void _Py_DeactivateActCtx(ULONG_PTR cookie);
+#endif
 
 const struct filedescr _PyImport_DynLoadFiletab[] = {
 #ifdef _DEBUG
@@ -173,33 +175,62 @@ dl_funcptr _PyImport_GetDynLoadFunc(const char *fqname, const char *shortname,
 
     {
         HINSTANCE hDLL = NULL;
+#ifndef MS_UWP
         char pathbuf[260];
         LPTSTR dummy;
         unsigned int old_mode;
+#if HAVE_SXS
         ULONG_PTR cookie = 0;
+#endif
         /* We use LoadLibraryEx so Windows looks for dependent DLLs
             in directory of pathname first.  However, Windows95
             can sometimes not work correctly unless the absolute
             path is used.  If GetFullPathName() fails, the LoadLibrary
             will certainly fail too, so use its error code */
 
-        /* Don't display a message box when Python can't load a DLL */
+            /* Don't display a message box when Python can't load a DLL */
         old_mode = SetErrorMode(SEM_FAILCRITICALERRORS);
 
         if (GetFullPathName(pathname,
                             sizeof(pathbuf),
                             pathbuf,
                             &dummy)) {
+#if HAVE_SXS
             ULONG_PTR cookie = _Py_ActivateActCtx();
+#endif
             /* XXX This call doesn't exist in Windows CE */
             hDLL = LoadLibraryEx(pathname, NULL,
                                  LOAD_WITH_ALTERED_SEARCH_PATH);
+#if HAVE_SXS
             _Py_DeactivateActCtx(cookie);
+#endif
         }
 
         /* restore old error mode settings */
         SetErrorMode(old_mode);
+#else
+        wchar_t wpathname[MAX_PATH];
+        wchar_t packagepath[MAX_PATH];
+        size_t len;
 
+        extern size_t uwp_Utf8ToW(const char* src, wchar_t* buffer, int maxlen);
+        extern size_t uwp_getinstallpath(wchar_t *buffer, size_t cch);
+
+        uwp_Utf8ToW(pathname, wpathname, MAX_PATH);
+
+        /* UWP apps require libraries to be packaged */
+        len = uwp_getinstallpath(packagepath, MAX_PATH);
+        if (len >= 0 && wcsnicmp(packagepath, wpathname, len) == 0)
+        {
+            if (wpathname[len] == '\\' || wpathname[len] == '/')
+                len++;
+            hDLL = LoadPackagedLibrary(&wpathname[len], 0);
+        }
+        else
+        {
+            hDLL = LoadPackagedLibrary(wpathname, 0);
+        }
+#endif
         if (hDLL==NULL){
             char errBuf[256];
             unsigned int errorCode;

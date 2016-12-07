@@ -242,7 +242,11 @@ static TCHAR *FormatError(DWORD code)
 {
     TCHAR *lpMsgBuf;
     DWORD n;
-    n = FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
+    n = FormatMessage(
+#ifndef MS_UWP
+        FORMAT_MESSAGE_ALLOCATE_BUFFER |
+#endif
+        FORMAT_MESSAGE_FROM_SYSTEM,
                       NULL,
                       code,
                       MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), /* Default language */
@@ -781,7 +785,7 @@ static int _call_function_pointer(int flags,
     PyThreadState *_save = NULL; /* For Py_BLOCK_THREADS and Py_UNBLOCK_THREADS */
 #endif
     PyObject *error_object = NULL;
-    int *space;
+    int *space = NULL;
     ffi_cif cif;
     int cc;
 #ifdef MS_WIN32
@@ -1002,6 +1006,7 @@ error:
 static PyObject *
 GetComError(HRESULT errcode, GUID *riid, IUnknown *pIunk)
 {
+#ifndef MS_UWP
     HRESULT hr;
     ISupportErrorInfo *psei = NULL;
     IErrorInfo *pei = NULL;
@@ -1071,7 +1076,7 @@ GetComError(HRESULT errcode, GUID *riid, IUnknown *pIunk)
         SysFreeString(helpfile);
     if (source)
         SysFreeString(source);
-
+#endif
     return NULL;
 }
 #endif
@@ -1262,7 +1267,9 @@ static PyObject *format_error(PyObject *self, PyObject *args)
     lpMsgBuf = FormatError(code);
     if (lpMsgBuf) {
         result = Py_BuildValue(PYBUILD_TSTR, lpMsgBuf);
+#if !defined(MS_UWP)
         LocalFree(lpMsgBuf);
+#endif
     } else {
         result = Py_BuildValue("s", "<no description>");
     }
@@ -1304,7 +1311,11 @@ static PyObject *load_library(PyObject *self, PyObject *args)
         return NULL;
 #endif
 
+#ifdef MS_UWP
+    hMod = LoadPackagedLibrary(name, 0);
+#else
     hMod = LoadLibrary(name);
+#endif
     if (!hMod)
         return PyErr_SetFromWindowsErr(GetLastError());
 #ifdef _WIN64

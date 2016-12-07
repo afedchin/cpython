@@ -3913,11 +3913,12 @@ PyObject *PyUnicode_AsASCIIString(PyObject *unicode)
 static int is_dbcs_lead_byte(const char *s, int offset)
 {
     const char *curr = s + offset;
-
+#ifndef MS_UWP
     if (IsDBCSLeadByte(*curr)) {
         const char *prev = CharPrev(s, curr);
         return (prev == curr) || !IsDBCSLeadByte(*prev) || (curr - prev == 2);
     }
+#endif
     return 0;
 }
 
@@ -8414,7 +8415,7 @@ PyObject *PyUnicode_Format(PyObject *format,
             int isnumok;
             PyObject *v = NULL;
             PyObject *temp = NULL;
-            Py_UNICODE *pbuf;
+            Py_UNICODE *pbuf = NULL;
             Py_UNICODE sign;
             Py_ssize_t len;
             Py_UNICODE formatbuf[FORMATBUFLEN]; /* For format{int,char}() */

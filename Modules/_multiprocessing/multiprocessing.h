@@ -18,6 +18,9 @@
  */
 
 #ifdef MS_WINDOWS
+#ifndef MS_UWP
+#define HAVE_PIPES
+#endif
 #  define WIN32_LEAN_AND_MEAN
 #  include <windows.h>
 #  include <winsock2.h>
@@ -136,7 +139,9 @@ extern PyObject *pickle_protocol;
 extern PyObject *BufferTooShort;
 extern PyTypeObject SemLockType;
 extern PyTypeObject ConnectionType;
+#if HAVE_PIPES
 extern PyTypeObject PipeConnectionType;
+#endif
 extern HANDLE sigint_event;
 
 /*

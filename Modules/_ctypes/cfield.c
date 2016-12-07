@@ -1372,7 +1372,7 @@ z_get(void *ptr, Py_ssize_t size)
 {
     /* XXX What about invalid pointers ??? */
     if (*(void **)ptr) {
-#if defined(MS_WIN32) && !defined(_WIN32_WCE)
+#if defined(MS_WIN32) && !defined(_WIN32_WCE) && !defined(MS_UWP)
         if (IsBadStringPtrA(*(char **)ptr, -1)) {
             PyErr_Format(PyExc_ValueError,
                          "invalid string pointer %p",
@@ -1465,7 +1465,7 @@ Z_get(void *ptr, Py_ssize_t size)
     wchar_t *p;
     p = *(wchar_t **)ptr;
     if (p) {
-#if defined(MS_WIN32) && !defined(_WIN32_WCE)
+#if defined(MS_WIN32) && !defined(_WIN32_WCE) && !defined(MS_UWP)
         if (IsBadStringPtrW(*(wchar_t **)ptr, -1)) {
             PyErr_Format(PyExc_ValueError,
                          "invalid string pointer %p",

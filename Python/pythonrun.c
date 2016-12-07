@@ -27,6 +27,17 @@
 #include "malloc.h" /* for alloca */
 #endif
 
+#if defined(MS_UWP)
+/* UWP apps do not have environment variables */
+extern char* win10_getenv(const char* n);
+#define getenv win10_getenv
+#undef environ
+#define environ (NULL)
+/* getpid is not available, but GetCurrentProcessId is */
+#define getpid GetCurrentProcessId
+#endif
+
+
 #ifdef HAVE_LANGINFO_H
 #include <locale.h>
 #include <langinfo.h>
@@ -168,7 +179,7 @@ Py_InitializeEx(int install_sigs)
 #if defined(Py_USING_UNICODE) && defined(HAVE_LANGINFO_H) && defined(CODESET)
     char *saved_locale, *loc_codeset;
 #endif
-#ifdef MS_WINDOWS
+#if defined(MS_WINDOWS) && !defined(MS_UWP)
     char ibuf[128];
     char buf[128];
 #endif
@@ -339,7 +350,7 @@ Py_InitializeEx(int install_sigs)
     }
 #endif
 
-#ifdef MS_WINDOWS
+#if defined(MS_WINDOWS) && !defined(MS_UWP)
     if (!overridden) {
         icodeset = ibuf;
         codeset = buf;
@@ -1694,7 +1705,11 @@ Py_FatalError(const char *msg)
         OutputDebugStringW(L"\n");
     }
 #ifdef _DEBUG
+#ifdef MS_UWP
+    __debugbreak();
+#else
     DebugBreak();
+#endif
 #endif
 #endif /* MS_WINDOWS */
     abort();

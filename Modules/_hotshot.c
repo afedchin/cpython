@@ -1462,9 +1462,13 @@ write_header(ProfilerObject *self)
     pack_add_info(self, "observed-interval-gettimeofday", cwdbuffer);
 #endif
 
+#ifdef MS_UWP
+    pack_add_info(self, "current-directory",
+        "UWP does not support getcwd");
+#else
     pack_add_info(self, "current-directory",
                   getcwd(cwdbuffer, sizeof cwdbuffer));
-
+#endif
     temp = PySys_GetObject("path");
     if (temp == NULL || !PyList_Check(temp)) {
         PyErr_SetString(PyExc_RuntimeError, "sys.path must be a list");

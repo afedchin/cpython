@@ -99,8 +99,10 @@ Local naming conventions:
 #include "structmember.h"
 #include "timefuncs.h"
 
+#ifndef MS_UWP
 #ifndef INVALID_SOCKET /* MS defines this */
 #define INVALID_SOCKET (-1)
+#endif
 #endif
 
 #undef MAX
@@ -395,8 +397,10 @@ const char *inet_ntop(int af, const void *src, char *dst, socklen_t size);
 #endif
 
 #ifdef MS_WIN32
+#ifndef MS_UWP
 #define EAFNOSUPPORT WSAEAFNOSUPPORT
 #define snprintf _snprintf
+#endif
 #endif
 
 #if defined(PYOS_OS2) && !defined(PYCC_GCC)
@@ -2922,7 +2926,7 @@ static PyObject *
 sock_sendto(PySocketSockObject *s, PyObject *args)
 {
     Py_buffer pbuf;
-    PyObject *addro;
+    PyObject *addro = NULL;
     char *buf;
     Py_ssize_t len;
     sock_addr_t addrbuf;

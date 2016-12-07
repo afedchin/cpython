@@ -197,8 +197,10 @@ PyAPI_FUNC(PyObject *) PyErr_Format(PyObject *, const char *, ...)
                         Py_GCC_ATTRIBUTE((format(printf, 2, 3)));
 
 #ifdef MS_WINDOWS
+#ifndef MS_UWP
 PyAPI_FUNC(PyObject *) PyErr_SetFromWindowsErrWithFilenameObject(
     int, const char *);
+#endif
 PyAPI_FUNC(PyObject *) PyErr_SetFromWindowsErrWithFilename(
     int, const char *);
 PyAPI_FUNC(PyObject *) PyErr_SetFromWindowsErrWithUnicodeFilename(
@@ -206,6 +208,8 @@ PyAPI_FUNC(PyObject *) PyErr_SetFromWindowsErrWithUnicodeFilename(
 PyAPI_FUNC(PyObject *) PyErr_SetFromWindowsErr(int);
 PyAPI_FUNC(PyObject *) PyErr_SetExcFromWindowsErrWithFilenameObject(
     PyObject *,int, PyObject *);
+PyAPI_FUNC(PyObject *) PyErr_SetExcFromWindowsErrWithFilenameObjects(
+    PyObject *, int, PyObject *, PyObject *);
 PyAPI_FUNC(PyObject *) PyErr_SetExcFromWindowsErrWithFilename(
     PyObject *,int, const char *);
 PyAPI_FUNC(PyObject *) PyErr_SetExcFromWindowsErrWithUnicodeFilename(

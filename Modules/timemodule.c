@@ -27,6 +27,17 @@
 #include <io.h>
 #endif
 
+#if defined(MS_UWP)
+/* UWP apps do not have environment variables */
+extern char* win10_getenv(const char* n);
+#define getenv(v) win10_getenv
+#undef environ
+#define environ (NULL)
+/* getpid is not available, but GetCurrentProcessId is */
+#define getpid GetCurrentProcessId
+#endif
+
+
 #ifdef HAVE_FTIME
 #include <sys/timeb.h>
 #if !defined(MS_WINDOWS) && !defined(PYOS_OS2)
@@ -41,6 +52,15 @@ extern int ftime(struct timeb *);
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include "pythread.h"
+
+
+/* VS 2015 defines these names with a leading underscore */
+#if _MSC_VER >= 1900
+#define timezone _timezone
+#define daylight _daylight
+#define tzname _tzname
+#endif
+
 
 /* helper to allow us to interrupt sleep() on Windows*/
 static HANDLE hInterruptEvent = NULL;
@@ -705,7 +725,7 @@ inittimezone(PyObject *m) {
 
     And I'm lazy and hate C so nyer.
      */
-#if defined(HAVE_TZNAME) && !defined(__GLIBC__) && !defined(__CYGWIN__)
+#if defined(HAVE_TZNAME) && !defined(__GLIBC__) && !defined(__CYGWIN__)  && !defined(MS_UWP)
     tzset();
 #ifdef PYOS_OS2
     PyModule_AddIntConstant(m, "timezone", _timezone);
@@ -877,7 +897,9 @@ inittime(void)
     */
     main_thread = PyThread_get_thread_ident();
     hInterruptEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
+#ifndef MS_UWP
     SetConsoleCtrlHandler( PyCtrlHandler, TRUE);
+#endif
 #endif /* MS_WINDOWS */
     if (!initialized) {
         PyStructSequence_InitType(&StructTimeType,

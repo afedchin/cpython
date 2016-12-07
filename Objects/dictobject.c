@@ -1409,7 +1409,7 @@ dict_fromkeys(PyObject *cls, PyObject *args)
         if (PyAnySet_CheckExact(seq)) {
             PyDictObject *mp = (PyDictObject *)d;
             Py_ssize_t pos = 0;
-            PyObject *key;
+            PyObject *key = NULL;
             long hash;
 
             if (dictresize(mp, PySet_GET_SIZE(seq) / 2 * 3)) {

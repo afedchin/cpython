@@ -37,7 +37,7 @@ conn_send_string(ConnectionObject *conn, char *string, size_t length)
  *
  * Returns number of bytes read.  Assumes in message oriented mode.
  */
-
+#ifdef HAVE_PIPES
 static Py_ssize_t
 conn_recv_string(ConnectionObject *conn, char *buffer,
                  size_t buflength, char **newbuffer, size_t maxlength)
@@ -84,6 +84,7 @@ conn_recv_string(ConnectionObject *conn, char *buffer,
         return MP_STANDARD_ERROR;
     }
 }
+#endif
 
 /*
  * Check whether any data is available for reading

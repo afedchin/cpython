@@ -395,6 +395,19 @@ mmap_size_method(mmap_object *self,
     if (self->file_handle != INVALID_HANDLE_VALUE) {
         DWORD low,high;
         PY_LONG_LONG size;
+#ifdef MS_UWP
+        FILE_STANDARD_INFO fileStandardInfo;
+        if (!GetFileInformationByHandleEx(self->file_handle, FileStandardInfo, &fileStandardInfo, sizeof(fileStandardInfo)))
+        {
+            /* It might be that the function appears to have failed,
+            when indeed its size equals INVALID_FILE_SIZE */
+            DWORD error = GetLastError();
+            if (error != NO_ERROR)
+                return PyErr_SetFromWindowsErr(error);
+        }
+        high = fileStandardInfo.EndOfFile.HighPart;
+        low = fileStandardInfo.EndOfFile.LowPart;
+#else
         low = GetFileSize(self->file_handle, &high);
         if (low == INVALID_FILE_SIZE) {
             /* It might be that the function appears to have failed,
@@ -403,6 +416,7 @@ mmap_size_method(mmap_object *self,
             if (error != NO_ERROR)
                 return PyErr_SetFromWindowsErr(error);
         }
+#endif
         if (!high && low < LONG_MAX)
             return PyInt_FromLong((long)low);
         size = (((PY_LONG_LONG)high)<<32) + low;
@@ -454,6 +468,9 @@ mmap_resize_method(mmap_object *self,
 
     {
 #ifdef MS_WINDOWS
+#ifdef MS_UWP
+        return NULL;
+#else
         DWORD dwErrCode = 0;
         DWORD off_hi, off_lo, newSizeLow, newSizeHigh;
         /* First, unmap the file view */
@@ -499,6 +516,7 @@ mmap_resize_method(mmap_object *self,
         }
         PyErr_SetFromWindowsErr(dwErrCode);
         return NULL;
+#endif /* MS_UWP */
 #endif /* MS_WINDOWS */
 
 #ifdef UNIX
@@ -1258,6 +1276,7 @@ new_mmap_object(PyTypeObject *type, PyObject *args, PyObject *kwdict)
 static PyObject *
 new_mmap_object(PyTypeObject *type, PyObject *args, PyObject *kwdict)
 {
+#ifndef MS_UWP
     mmap_object *m_obj;
     Py_ssize_t map_size;
     PY_LONG_LONG offset = 0, size;
@@ -1447,6 +1466,7 @@ new_mmap_object(PyTypeObject *type, PyObject *args, PyObject *kwdict)
         dwErr = GetLastError();
     Py_DECREF(m_obj);
     PyErr_SetFromWindowsErr(dwErr);
+#endif /* MS_UWP */
     return NULL;
 }
 #endif /* MS_WINDOWS */
