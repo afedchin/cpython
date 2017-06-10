@@ -411,6 +411,12 @@
     <ClInclude Include="..\Python\thread_nt.h">
       <Filter>Python</Filter>
     </ClInclude>
+    <ClInclude Include="..\PC\pythonuwp.h">
+      <Filter>Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\PC\stdlistener.h">
+      <Filter>Include</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Modules\_bisectmodule.c">
@@ -794,9 +800,6 @@
     <ClCompile Include="..\Parser\tokenizer.c">
       <Filter>Parser</Filter>
     </ClCompile>
-    <ClCompile Include="..\PC\_subprocess.c">
-      <Filter>PC</Filter>
-    </ClCompile>
     <ClCompile Include="..\PC\_winreg.c">
       <Filter>PC</Filter>
     </ClCompile>
@@ -944,6 +947,7 @@
     <ClCompile Include="..\Python\traceback.c">
       <Filter>Python</Filter>
     </ClCompile>
+    <ClCompile Include="..\PC\uwpapi.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="..\PC\python_nt.rc">
