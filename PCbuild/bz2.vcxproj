@@ -152,10 +152,12 @@
       <AdditionalLibraryDirectories Condition="'$(Configuration)'=='Release'">$(ProjectDir)..\..\vcpkg\installed\$(PlatformTarget)-uwp\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalLibraryDirectories Condition="'$(Configuration)'=='PGUpdate'">$(ProjectDir)..\..\vcpkg\installed\$(PlatformTarget)-uwp\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalLibraryDirectories Condition="'$(Configuration)'=='PGInstrument'">$(ProjectDir)..\..\vcpkg\installed\$(PlatformTarget)-uwp\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>libbz2.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies Condition="'$(Configuration)'=='Debug'">$(ProjectDir)..\..\vcpkg\installed\$(PlatformTarget)-uwp\debug\lib\bz2d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies Condition="'$(Configuration)'!='Debug'">$(ProjectDir)..\..\vcpkg\installed\$(PlatformTarget)-uwp\lib\bz2.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <TargetMachine Condition="'$(Platform)'=='Win32'">MachineX86</TargetMachine>
       <TargetMachine Condition="'$(Platform)'=='ARM'">MachineARM</TargetMachine>
-      <TargetMachine Condition="'$(Platform)'=='x64'">MachineX64</TargetMachine>    </Link>
+      <TargetMachine Condition="'$(Platform)'=='x64'">MachineX64</TargetMachine>
+    </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\Modules\bz2module.c" />
