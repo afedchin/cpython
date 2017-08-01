@@ -1,6 +1,6 @@
 #include "Python.h"
 
-#if defined(MS_UWP) || defined(TARGET_WIN10)
+#if defined(MS_UWP) || defined(TARGET_WINDOWS_STORE)
 
 #include <SDKDDKVer.h>
 #include <windows.h>
