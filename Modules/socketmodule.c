@@ -2361,7 +2361,7 @@ sock_accept(PySocketSockObject *s)
         return NULL;
     newfd = ctx.result;
 
-#ifdef MS_WINDOWS
+#if defined(MS_WINDOWS) && !defined(TARGET_WINDOWS_STORE)
     if (!SetHandleInformation((HANDLE)newfd, HANDLE_FLAG_INHERIT, 0)) {
         PyErr_SetFromWindowsErr(0);
         SOCKETCLOSE(newfd);
@@ -4704,11 +4704,13 @@ sock_initobj(PyObject *self, PyObject *args, PyObject *kwds)
         }
 
         if (!support_wsa_no_inherit) {
+#ifndef TARGET_WINDOWS_STORE
             if (!SetHandleInformation((HANDLE)fd, HANDLE_FLAG_INHERIT, 0)) {
                 closesocket(fd);
                 PyErr_SetFromWindowsErr(0);
                 return -1;
             }
+#endif
         }
 #else
         /* UNIX */
@@ -4809,8 +4811,14 @@ static PyTypeObject sock_type = {
     (destructor)sock_finalize,                  /* tp_finalize */
 };
 
+#ifndef MAX_COMPUTERNAME_LENGTH
+#define MAX_COMPUTERNAME_LENGTH 31
+#endif // !MAX_COMPUTERNAME_LENGTH
 
 /* Python interface to gethostname(). */
+#ifdef TARGET_WINDOWS_STORE
+extern int win10_gethostname(wchar_t *buf, unsigned long *size);
+#endif
 
 /*ARGSUSED*/
 static PyObject *
@@ -4825,12 +4833,16 @@ socket_gethostname(PyObject *self, PyObject *unused)
     wchar_t *name;
     PyObject *result;
 
+#ifndef TARGET_WINDOWS_STORE
     if (GetComputerNameExW(ComputerNamePhysicalDnsHostname, buf, &size))
         return PyUnicode_FromWideChar(buf, size);
 
     if (GetLastError() != ERROR_MORE_DATA)
         return PyErr_SetFromWindowsErr(0);
-
+#else
+    if (win10_gethostname(buf, &size))
+        return PyUnicode_FromWideChar(buf, size);
+#endif
     if (size == 0)
         return PyUnicode_New(0, 0);
 
@@ -4841,9 +4853,13 @@ socket_gethostname(PyObject *self, PyObject *unused)
         PyErr_NoMemory();
         return NULL;
     }
+#ifndef TARGET_WINDOWS_STORE
     if (!GetComputerNameExW(ComputerNamePhysicalDnsHostname,
                            name,
                            &size))
+#else
+    if (!win10_gethostname(name, &size))
+#endif
     {
         PyMem_Free(name);
         return PyErr_SetFromWindowsErr(0);
@@ -5359,11 +5375,13 @@ socket_dup(PyObject *self, PyObject *fdobj)
     if (newfd == INVALID_SOCKET)
         return set_error();
 
+#ifndef TARGET_WINDOWS_STORE
     if (!SetHandleInformation((HANDLE)newfd, HANDLE_FLAG_INHERIT, 0)) {
         closesocket(newfd);
         PyErr_SetFromWindowsErr(0);
         return NULL;
     }
+#endif // !TARGET_WINDOWS_STORE
 #else
     /* On UNIX, dup can be used to duplicate the file descriptor of a socket */
     newfd = _Py_dup(fd);
@@ -6508,7 +6526,11 @@ PyInit__socket(void)
 #ifdef MS_WINDOWS
     if (support_wsa_no_inherit == -1) {
 #if defined(_MSC_VER) && _MSC_VER >= 1800
+#ifdef TARGET_WINDOWS_STORE
+        support_wsa_no_inherit = 1;
+#else
         support_wsa_no_inherit = IsWindows7SP1OrGreater();
+#endif
 #else
         DWORD version = GetVersion();
         DWORD major = (DWORD)LOBYTE(LOWORD(version));

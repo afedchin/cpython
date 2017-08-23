@@ -7,6 +7,10 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include "structmember.h"
+#ifdef TARGET_WINDOWS_STORE
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#endif // TARGET_WINDOWS_STORE
 #include "osdefs.h"
 
 

@@ -5,6 +5,10 @@
 
 #include "Python-ast.h"
 #undef Yield /* undefine macro conflicting with winbase.h */
+#ifdef TARGET_WINDOWS_STORE
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#endif // TARGET_WINDOWS_STORE
 #include "grammar.h"
 #include "node.h"
 #include "token.h"

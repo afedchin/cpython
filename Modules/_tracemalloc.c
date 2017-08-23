@@ -2,6 +2,13 @@
 #include "hashtable.h"
 #include "frameobject.h"
 #include "pythread.h"
+#ifdef TARGET_WINDOWS_STORE
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+/* UWP apps do not have environment variables */
+extern char* win10_getenv(const char* n);
+#define getenv(v) win10_getenv(v)
+#endif // TARGET_WINDOWS_STORE
 #include "osdefs.h"
 
 /* Trace memory blocks allocated by PyMem_RawMalloc() */

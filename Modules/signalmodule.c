@@ -13,6 +13,9 @@
 
 #ifdef MS_WINDOWS
 #include <windows.h>
+#ifdef TARGET_WINDOWS_STORE
+#define getpid GetCurrentProcessId
+#endif
 #ifdef HAVE_PROCESS_H
 #include <process.h>
 #endif

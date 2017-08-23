@@ -24,6 +24,8 @@
 #include <crtdbg.h>
 #include <windows.h>
 
+#ifndef TARGET_WINDOWS_STORE
+
 #ifdef _MSC_VER
 #if _MSC_VER >= 1500 && _MSC_VER < 1600
 #include <crtassem.h>
@@ -604,3 +606,4 @@ PyInit_msvcrt(void)
 
     return m;
 }
+#endif

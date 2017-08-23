@@ -136,7 +136,7 @@ static void _CallPythonObject(void *mem,
     PyObject *arglist = NULL;
     Py_ssize_t nArgs;
     PyObject *error_object = NULL;
-    int *space;
+    int *space = NULL;
 #ifdef WITH_THREAD
     PyGILState_STATE state = PyGILState_Ensure();
 #endif

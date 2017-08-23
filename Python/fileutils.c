@@ -1,4 +1,8 @@
 #include "Python.h"
+#ifdef TARGET_WINDOWS_STORE
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#endif // TARGET_WINDOWS_STORE
 #include "osdefs.h"
 #include <locale.h>
 
@@ -50,12 +54,14 @@ _Py_device_encoding(int fd)
         Py_RETURN_NONE;
 
 #if defined(MS_WINDOWS)
+#ifndef TARGET_WINDOWS_STORE
     if (fd == 0)
         cp = GetConsoleCP();
     else if (fd == 1 || fd == 2)
         cp = GetConsoleOutputCP();
     else
-        cp = 0;
+#endif // !TARGET_WINDOWS_STORE
+		cp = 0;
     /* GetConsoleCP() and GetConsoleOutputCP() return 0 if the application
        has no console */
     if (cp != 0)
@@ -530,6 +536,13 @@ Py_EncodeLocale(const wchar_t *text, size_t *error_pos)
 static __int64 secs_between_epochs = 11644473600; /* Seconds between 1.1.1601 and 1.1.1970 */
 
 static void
+int64_to_time_t_nsec(__int64 in, time_t *time_out, int* nsec_out)
+{
+    *nsec_out = (int)(in % 10000000) * 100; /* FILETIME is in units of 100 nsec. */
+    *time_out = Py_SAFE_DOWNCAST((in / 10000000) - secs_between_epochs, __int64, time_t);
+}
+
+static void
 FILE_TIME_to_time_t_nsec(FILETIME *in_ptr, time_t *time_out, int* nsec_out)
 {
     /* XXX endianness. Shouldn't matter, as all Windows implementations are little-endian */
@@ -537,8 +550,7 @@ FILE_TIME_to_time_t_nsec(FILETIME *in_ptr, time_t *time_out, int* nsec_out)
        since it might not be aligned properly */
     __int64 in;
     memcpy(&in, in_ptr, sizeof(in));
-    *nsec_out = (int)(in % 10000000) * 100; /* FILETIME is in units of 100 nsec. */
-    *time_out = Py_SAFE_DOWNCAST((in / 10000000) - secs_between_epochs, __int64, time_t);
+    int64_to_time_t_nsec(in, time_out, nsec_out);
 }
 
 void
@@ -610,7 +622,13 @@ int
 _Py_fstat_noraise(int fd, struct _Py_stat_struct *status)
 {
 #ifdef MS_WINDOWS
+#ifdef TARGET_WINDOWS_STORE
+    FILE_ID_BOTH_DIR_INFO info;
+    FILE_STANDARD_INFO sInfo;
+    FILE_ID_INFO idInfo;
+#else
     BY_HANDLE_FILE_INFORMATION info;
+#endif // TARGET_WINDOWS_STORE
     HANDLE h;
     int type;
 
@@ -644,6 +662,31 @@ _Py_fstat_noraise(int fd, struct _Py_stat_struct *status)
         return 0;
     }
 
+#ifdef TARGET_WINDOWS_STORE
+    if (!GetFileInformationByHandleEx(h, FileIdBothDirectoryInfo, &info, sizeof(info))) {
+        errno = winerror_to_errno(GetLastError());
+        return -1;
+    }
+    if (!GetFileInformationByHandleEx(h, FileStandardInfo, &sInfo, sizeof(sInfo))) {
+        errno = winerror_to_errno(GetLastError());
+        return -1;
+    }
+    if (!GetFileInformationByHandleEx(h, FileIdInfo, &idInfo, sizeof(idInfo))) {
+        idInfo.VolumeSerialNumber = 0;
+    }
+
+    memset(status, 0, sizeof(*status));
+    status->st_mode = attributes_to_mode(info.FileAttributes);
+    status->st_size = (__int64)info.EndOfFile.QuadPart;
+    status->st_dev = idInfo.VolumeSerialNumber;
+    status->st_rdev = status->st_dev;
+    int64_to_time_t_nsec(info.CreationTime.QuadPart, &status->st_ctime, &status->st_ctime_nsec);
+    int64_to_time_t_nsec(info.LastWriteTime.QuadPart, &status->st_mtime, &status->st_mtime_nsec);
+    int64_to_time_t_nsec(info.LastAccessTime.QuadPart, &status->st_atime, &status->st_atime_nsec);
+    status->st_nlink = sInfo.NumberOfLinks;
+    status->st_ino = info.FileIndex;
+    status->st_file_attributes = info.FileAttributes;
+#else
     if (!GetFileInformationByHandle(h, &info)) {
         /* The Win32 error is already set, but we also set errno for
            callers who expect it */
@@ -654,6 +697,7 @@ _Py_fstat_noraise(int fd, struct _Py_stat_struct *status)
     _Py_attribute_data_to_stat(&info, 0, status);
     /* specific to fstat() */
     status->st_ino = (((uint64_t)info.nFileIndexHigh) << 32) + info.nFileIndexLow;
+#endif // TARGET_WINDOWS_STORE
     return 0;
 #else
     return fstat(fd, status);
@@ -747,6 +791,9 @@ static int
 get_inheritable(int fd, int raise)
 {
 #ifdef MS_WINDOWS
+#ifdef TARGET_WINDOWS_STORE
+	return 0;
+#else
     HANDLE handle;
     DWORD flags;
 
@@ -766,6 +813,7 @@ get_inheritable(int fd, int raise)
     }
 
     return (flags & HANDLE_FLAG_INHERIT);
+#endif
 #else
     int flags;
 
@@ -792,8 +840,10 @@ static int
 set_inheritable(int fd, int inheritable, int raise, int *atomic_flag_works)
 {
 #ifdef MS_WINDOWS
+#ifndef TARGET_WINDOWS_STORE
     HANDLE handle;
     DWORD flags;
+#endif // !TARGET_WINDOWS_STORE
 #else
 #if defined(HAVE_SYS_IOCTL_H) && defined(FIOCLEX) && defined(FIONCLEX)
     static int ioctl_works = -1;
@@ -821,7 +871,8 @@ set_inheritable(int fd, int inheritable, int raise, int *atomic_flag_works)
     }
 
 #ifdef MS_WINDOWS
-    _Py_BEGIN_SUPPRESS_IPH
+#ifndef TARGET_WINDOWS_STORE
+	_Py_BEGIN_SUPPRESS_IPH
     handle = (HANDLE)_get_osfhandle(fd);
     _Py_END_SUPPRESS_IPH
     if (handle == INVALID_HANDLE_VALUE) {
@@ -839,7 +890,8 @@ set_inheritable(int fd, int inheritable, int raise, int *atomic_flag_works)
             PyErr_SetFromWindowsErr(0);
         return -1;
     }
-    return 0;
+#endif // !TARGET_WINDOWS_STORE
+	return 0;
 
 #else
 

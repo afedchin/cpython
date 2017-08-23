@@ -80,6 +80,15 @@
 
 
 #include "Python.h"
+#ifdef TARGET_WINDOWS_STORE
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+   /* UWP apps do not have environment variables */
+extern char* win10_getenv(const char* n);
+extern wchar_t* win10_wgetenv(const wchar_t* n);
+#define getenv(v) win10_getenv(v)
+#define _wgetenv(v) win10_wgetenv(v)
+#endif // TARGET_WINDOWS_STORE
 #include "osdefs.h"
 #include <wchar.h>
 
@@ -223,6 +232,24 @@ static PPathCchCombineEx _PathCchCombineEx;
 static void
 join(wchar_t *buffer, const wchar_t *stuff)
 {
+#ifdef TARGET_WINDOWS_STORE
+	// use Py2 version of join updated to wide char
+	size_t n, k;
+	if (is_sep(stuff[0]))
+		n = 0;
+	else {
+		n = wcslen(buffer);
+		if (n > 0 && !is_sep(buffer[n - 1]) && n < MAXPATHLEN)
+			buffer[n++] = SEP;
+	}
+	if (n > MAXPATHLEN)
+		Py_FatalError("buffer overflow in getpathp.c's joinpath()");
+	k = wcslen(stuff);
+	if (n + k > MAXPATHLEN)
+		k = MAXPATHLEN - n;
+	wcsncpy(buffer + n, stuff, k);
+	buffer[n + k] = '\0';
+#else
     if (_PathCchCombineEx_Initialized == 0) {
         HMODULE pathapi = LoadLibraryW(L"api-ms-win-core-path-l1-1-0.dll");
         if (pathapi)
@@ -239,6 +266,7 @@ join(wchar_t *buffer, const wchar_t *stuff)
         if (!PathCombineW(buffer, buffer, stuff))
             Py_FatalError("buffer overflow in getpathp.c's join()");
     }
+#endif
 }
 
 /* gotlandmark only called by search_for_prefix, which ensures
@@ -273,6 +301,8 @@ search_for_prefix(wchar_t *argv0_path, const wchar_t *landmark)
 }
 
 #ifdef Py_ENABLE_SHARED
+
+#ifndef TARGET_WINDOWS_STORE
 
 /* a string loaded from the DLL at startup.*/
 extern const char *PyWin_DLLVersionString;
@@ -426,6 +456,7 @@ done:
     return retval;
 }
 #endif /* Py_ENABLE_SHARED */
+#endif // !TARGET_WINDOWS_STORE
 
 static void
 get_progpath(void)
@@ -714,7 +745,7 @@ calculate_path(void)
 
 
     skiphome = pythonhome==NULL ? 0 : 1;
-#ifdef Py_ENABLE_SHARED
+#if defined(Py_ENABLE_SHARED) && !defined(TARGET_WINDOWS_STORE)
     machinepath = getpythonregpath(HKEY_LOCAL_MACHINE, skiphome);
     userpath = getpythonregpath(HKEY_CURRENT_USER, skiphome);
 #endif
@@ -950,13 +981,21 @@ _Py_CheckPython3()
     if (!s)
         s = py3path;
     wcscpy(s, L"\\python3.dll");
+#ifdef TARGET_WINDOWS_STORE
+	hPython3 = LoadPackagedLibrary(py3path, 0);
+#else
     hPython3 = LoadLibraryExW(py3path, NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
+#endif
     if (hPython3 != NULL)
         return 1;
 
     /* Check sys.prefix\DLLs\python3.dll */
     wcscpy(py3path, Py_GetPrefix());
     wcscat(py3path, L"\\DLLs\\python3.dll");
-    hPython3 = LoadLibraryExW(py3path, NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
+#ifdef TARGET_WINDOWS_STORE
+	hPython3 = LoadPackagedLibrary(py3path, 0);
+#else
+	hPython3 = LoadLibraryExW(py3path, NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
+#endif
     return hPython3 != NULL;
 }

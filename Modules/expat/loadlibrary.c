@@ -30,6 +30,7 @@
 
 #if defined(_WIN32)
 
+#include "winconfig.h"
 #include <windows.h>
 #include <tchar.h>
 
@@ -59,7 +60,7 @@ typedef HMODULE (APIENTRY *LOADLIBRARYEX_FN)(LPCTSTR, HANDLE, DWORD);
 #  define LOADLIBARYEX    "LoadLibraryExA"
 #endif
 
-
+#ifndef TARGET_WINDOWS_STORE
 /*
  * _Expat_LoadLibrary()
  *
@@ -131,7 +132,7 @@ HMODULE _Expat_LoadLibrary(LPCTSTR filename)
 
   return hModule;
 }
-
+#endif
 #else /* defined(_WIN32) */
 
 /* ISO C requires a translation unit to contain at least one declaration

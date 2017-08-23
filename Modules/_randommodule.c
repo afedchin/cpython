@@ -72,6 +72,11 @@
 #  include <process.h>          /* needed for getpid() */
 #endif
 
+#ifdef TARGET_WINDOWS_STORE
+#include <windows.h>
+#define getpid GetCurrentProcessId
+#endif
+
 /* Period parameters -- These are all magic.  Don't change. */
 #define N 624
 #define M 397

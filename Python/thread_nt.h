@@ -75,13 +75,13 @@ EnterNonRecursiveMutex(PNRMUTEX mutex, DWORD milliseconds)
         }
     } else if (milliseconds != 0) {
         /* wait at least until the target */
-        DWORD now, target = GetTickCount() + milliseconds;
+        ULONGLONG now, target = GetTickCount64() + milliseconds;
         while (mutex->locked) {
             if (PyCOND_TIMEDWAIT(&mutex->cv, &mutex->cs, (long long)milliseconds*1000) < 0) {
                 result = WAIT_FAILED;
                 break;
             }
-            now = GetTickCount();
+            now = GetTickCount64();
             if (target <= now)
                 break;
             milliseconds = target-now;
@@ -347,9 +347,10 @@ _pythread_nt_set_stacksize(size_t size)
 
 #define THREAD_SET_STACKSIZE(x) _pythread_nt_set_stacksize(x)
 
-
+#ifndef TARGET_WINDOWS_STORE
 /* use native Windows TLS functions */
 #define Py_HAVE_NATIVE_TLS
+#endif // !TARGET_WINDOWS_STORE
 
 #ifdef Py_HAVE_NATIVE_TLS
 int

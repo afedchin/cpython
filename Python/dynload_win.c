@@ -204,13 +204,15 @@ dl_funcptr _PyImport_FindSharedFuncptrWindows(const char *prefix,
 
     {
         HINSTANCE hDLL = NULL;
-        unsigned int old_mode;
 #if HAVE_SXS
         ULONG_PTR cookie = 0;
 #endif
 
-        /* Don't display a message box when Python can't load a DLL */
+#ifndef TARGET_WINDOWS_STORE
+		unsigned int old_mode;
+		/* Don't display a message box when Python can't load a DLL */
         old_mode = SetErrorMode(SEM_FAILCRITICALERRORS);
+#endif // !TARGET_WINDOWS_STORE
 
 #if HAVE_SXS
         cookie = _Py_ActivateActCtx();
@@ -218,14 +220,34 @@ dl_funcptr _PyImport_FindSharedFuncptrWindows(const char *prefix,
         /* We use LoadLibraryEx so Windows looks for dependent DLLs
             in directory of pathname first. */
         /* XXX This call doesn't exist in Windows CE */
+#ifdef TARGET_WINDOWS_STORE
+        extern size_t uwp_getinstallpath(wchar_t *buffer, size_t cch);
+        wchar_t packagepath[MAX_PATH];
+
+        /* UWP apps require libraries to be packaged */
+        size_t len = uwp_getinstallpath(packagepath, MAX_PATH);
+        if (len >= 0 && wcsnicmp(packagepath, wpathname, len) == 0)
+        {
+            if (wpathname[len] == '\\' || wpathname[len] == '/')
+                len++;
+            hDLL = LoadPackagedLibrary(&wpathname[len], 0);
+        }
+        else
+        {
+            hDLL = LoadPackagedLibrary(wpathname, 0);
+        }
+#else
         hDLL = LoadLibraryExW(wpathname, NULL,
                               LOAD_WITH_ALTERED_SEARCH_PATH);
+#endif // TARGET_WINDOWS_STORE
 #if HAVE_SXS
         _Py_DeactivateActCtx(cookie);
 #endif
 
-        /* restore old error mode settings */
+#ifndef TARGET_WINDOWS_STORE
+		/* restore old error mode settings */
         SetErrorMode(old_mode);
+#endif // !TARGET_WINDOWS_STORE
 
         if (hDLL==NULL){
             PyObject *message;

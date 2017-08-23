@@ -46,6 +46,11 @@ static void _PyMem_DebugCheckAddress(char api_id, const void *p);
 
 #ifdef MS_WINDOWS
 #  include <windows.h>
+#ifdef TARGET_WINDOWS_STORE
+/* UWP apps do not have environment variables */
+extern char* win10_getenv(const char* n);
+#define getenv(v) win10_getenv(v)
+#endif
 #elif defined(HAVE_MMAP)
 #  include <sys/mman.h>
 #  ifdef MAP_ANONYMOUS

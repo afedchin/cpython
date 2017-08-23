@@ -42,6 +42,11 @@
 
 #endif /* _POSIX_THREADS */
 
+#ifdef TARGET_WINDOWS_STORE
+/* UWP apps do not have environment variables */
+extern char* win10_getenv(const char* n);
+#define getenv(v) win10_getenv(v)
+#endif
 
 #ifdef Py_DEBUG
 static int thread_debug = 0;

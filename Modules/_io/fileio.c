@@ -150,7 +150,7 @@ _io_FileIO_close_impl(fileio *self)
 /*[clinic end generated code: output=7737a319ef3bad0b input=f35231760d54a522]*/
 {
     PyObject *res;
-    PyObject *exc, *val, *tb;
+    PyObject *exc = NULL, *val = NULL, *tb = NULL;
     int rc;
     _Py_IDENTIFIER(close);
     res = _PyObject_CallMethodId((PyObject*)&PyRawIOBase_Type,

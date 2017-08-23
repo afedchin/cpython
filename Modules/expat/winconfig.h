@@ -17,6 +17,12 @@
 #include <memory.h>
 #include <string.h>
 
+#ifdef WINAPI_FAMILY
+#   include <winapifamily.h>
+#   if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
+#       define TARGET_WINDOWS_STORE
+#   endif
+#endif
 
 #if defined(HAVE_EXPAT_CONFIG_H)  /* e.g. MinGW */
 # include <expat_config.h>

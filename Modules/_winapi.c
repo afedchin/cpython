@@ -37,6 +37,8 @@
 #include "Python.h"
 #include "structmember.h"
 
+#ifndef TARGET_WINDOWS_STORE
+
 #define WINDOWS_LEAN_AND_MEAN
 #include "windows.h"
 #include <crtdbg.h>
@@ -1598,3 +1600,4 @@ PyInit__winapi(void)
 
     return m;
 }
+#endif

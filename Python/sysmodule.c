@@ -18,7 +18,11 @@ Data members:
 #include "code.h"
 #include "frameobject.h"
 #include "pythread.h"
-
+#ifdef TARGET_WINDOWS_STORE
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+extern void win10_getversion(PyObject* version);
+#endif // TARGET_WINDOWS_STORE
 #include "osdefs.h"
 #include <locale.h>
 
@@ -936,7 +940,8 @@ static PyObject *
 sys_getwindowsversion(PyObject *self)
 {
     PyObject *version;
-    int pos = 0;
+#ifndef TARGET_WINDOWS_STORE
+	int pos = 0;
     OSVERSIONINFOEX ver;
     DWORD realMajor, realMinor, realBuild;
     HANDLE hKernel32;
@@ -944,15 +949,19 @@ sys_getwindowsversion(PyObject *self)
     LPVOID verblock;
     DWORD verblock_size;
 
-    ver.dwOSVersionInfoSize = sizeof(ver);
+	ver.dwOSVersionInfoSize = sizeof(ver);
     if (!GetVersionEx((OSVERSIONINFO*) &ver))
         return PyErr_SetFromWindowsErr(0);
+#endif
 
     version = PyStructSequence_New(&WindowsVersionType);
     if (version == NULL)
         return NULL;
 
-    PyStructSequence_SET_ITEM(version, pos++, PyLong_FromLong(ver.dwMajorVersion));
+#ifdef TARGET_WINDOWS_STORE
+	win10_getversion(version);
+#else
+	PyStructSequence_SET_ITEM(version, pos++, PyLong_FromLong(ver.dwMajorVersion));
     PyStructSequence_SET_ITEM(version, pos++, PyLong_FromLong(ver.dwMinorVersion));
     PyStructSequence_SET_ITEM(version, pos++, PyLong_FromLong(ver.dwBuildNumber));
     PyStructSequence_SET_ITEM(version, pos++, PyLong_FromLong(ver.dwPlatformId));
@@ -990,7 +999,7 @@ sys_getwindowsversion(PyObject *self)
         realMinor,
         realBuild
     ));
-
+#endif
     if (PyErr_Occurred()) {
         Py_DECREF(version);
         return NULL;

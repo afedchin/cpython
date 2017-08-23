@@ -30,6 +30,15 @@
 #include "posixmodule.h"
 #else
 #include "winreparse.h"
+#ifdef TARGET_WINDOWS_STORE
+#define _MAX_ENV 32767
+extern void win10_convertenviron(PyObject *d);
+extern int win10_wputenv(const wchar_t *env);
+#undef environ
+#define environ (NULL)
+#define getpid GetCurrentProcessId
+#define _wputenv(x) win10_wputenv(x)
+#endif
 #endif
 
 /* On android API level 21, 'AT_EACCESS' is not declared although
@@ -140,7 +149,7 @@ corresponding Unix manual entries for more information on calls.");
 #  include <sys/syscall.h>
 #endif
 
-#if defined(MS_WINDOWS)
+#if defined(MS_WINDOWS) && !defined(TARGET_WINDOWS_STORE)
 #  define TERMSIZE_USE_CONIO
 #elif defined(HAVE_SYS_IOCTL_H)
 #  include <sys/ioctl.h>
@@ -160,15 +169,17 @@ corresponding Unix manual entries for more information on calls.");
 #include <process.h>
 #else
 #ifdef _MSC_VER         /* Microsoft compiler */
-#define HAVE_GETPPID    1
-#define HAVE_GETLOGIN   1
+#ifndef TARGET_WINDOWS_STORE
 #define HAVE_SPAWNV     1
-#define HAVE_EXECV      1
 #define HAVE_WSPAWNV    1
+#define HAVE_GETLOGIN   1
+#define HAVE_GETPPID    1
+#define HAVE_EXECV      1
 #define HAVE_WEXECV     1
 #define HAVE_PIPE       1
-#define HAVE_SYSTEM     1
 #define HAVE_CWAIT      1
+#endif
+#define HAVE_SYSTEM     1
 #define HAVE_FSYNC      1
 #define fsync _commit
 #else
@@ -313,14 +324,19 @@ extern int lstat(const char *, struct stat *);
 #ifndef IO_REPARSE_TAG_MOUNT_POINT
 #define IO_REPARSE_TAG_MOUNT_POINT (0xA0000003L)
 #endif
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 #include "osdefs.h"
 #include <malloc.h>
-#include <windows.h>
+#ifndef TARGET_WINDOWS_STORE
 #include <shellapi.h>   /* for ShellExecute() */
+#endif
 #include <lmcons.h>     /* for UNLEN */
 #ifdef SE_CREATE_SYMBOLIC_LINK_NAME /* Available starting with Vista */
+#ifndef TARGET_WINDOWS_STORE
 #define HAVE_SYMLINK
 static int win32_can_symlink = 0;
+#endif
 #endif
 #endif /* _MSC_VER */
 
@@ -1183,7 +1199,7 @@ PyLong_FromPy_off_t(Py_off_t offset)
 #endif
 }
 
-#ifdef MS_WINDOWS
+#if defined(MS_WINDOWS) && !defined(TARGET_WINDOWS_STORE)
 
 static int
 win32_get_reparse_tag(HANDLE reparse_point_handle, ULONG *reparse_tag)
@@ -1225,9 +1241,7 @@ static PyObject *
 convertenviron(void)
 {
     PyObject *d;
-#ifdef MS_WINDOWS
-    wchar_t **e;
-#else
+#ifndef MS_WINDOWS
     char **e;
 #endif
 
@@ -1239,7 +1253,11 @@ convertenviron(void)
         environ = *_NSGetEnviron();
 #endif
 #ifdef MS_WINDOWS
-    /* _wenviron must be initialized in this way if the program is started
+#ifdef TARGET_WINDOWS_STORE
+	win10_convertenviron(d);
+#else
+	wchar_t **e;
+	/* _wenviron must be initialized in this way if the program is started
        through main() instead of wmain(). */
     _wgetenv(L"");
     if (_wenviron == NULL)
@@ -1269,6 +1287,7 @@ convertenviron(void)
         Py_DECREF(k);
         Py_DECREF(v);
     }
+#endif
 #else
     if (environ == NULL)
         return d;
@@ -1439,6 +1458,7 @@ win32_wchdir(LPCWSTR path)
             return FALSE;
         }
     }
+#ifndef TARGET_WINDOWS_STORE
     if (wcsncmp(new_path, L"\\\\", 2) == 0 ||
         wcsncmp(new_path, L"//", 2) == 0)
         /* UNC path, nothing to do. */
@@ -1447,6 +1467,7 @@ win32_wchdir(LPCWSTR path)
     result = SetEnvironmentVariableW(env, new_path);
     if (new_path != path_buf)
         PyMem_RawFree(new_path);
+#endif
     return result;
 }
 #endif
@@ -1480,6 +1501,41 @@ find_data_to_file_info(WIN32_FIND_DATAW *pFileData,
         *reparse_tag = 0;
 }
 
+#ifdef TARGET_WINDOWS_STORE
+static BOOL
+attributes_from_dir(LPCWSTR pszFile, BY_HANDLE_FILE_INFORMATION *info, ULONG *reparse_tag)
+{
+    HANDLE hFindFile;
+    WIN32_FIND_DATAW FileData;
+    hFindFile = FindFirstFileExW(pszFile, FindExInfoBasic, &FileData, FindExSearchNameMatch, NULL, 0);
+    if (hFindFile == INVALID_HANDLE_VALUE)
+        return FALSE;
+    FindClose(hFindFile);
+    memset(info, 0, sizeof(*info));
+    *reparse_tag = 0;
+    info->dwFileAttributes = FileData.dwFileAttributes;
+    info->ftCreationTime = FileData.ftCreationTime;
+    info->ftLastAccessTime = FileData.ftLastAccessTime;
+    info->ftLastWriteTime = FileData.ftLastWriteTime;
+    info->nFileSizeHigh = FileData.nFileSizeHigh;
+    info->nFileSizeLow = FileData.nFileSizeLow;
+    info->nNumberOfLinks = 1;
+    if (FileData.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT)
+        *reparse_tag = FileData.dwReserved0;
+    return TRUE;
+}
+
+static int
+win32_xstat_impl(const wchar_t *path, struct _Py_stat_struct *result,
+                 BOOL traverse)
+{
+    /* byte-oriented API not supported in app */
+    SetLastError(E_NOTIMPL);
+    return -1;
+}
+#endif
+
+#ifndef TARGET_WINDOWS_STORE
 static BOOL
 attributes_from_dir(LPCWSTR pszFile, BY_HANDLE_FILE_INFORMATION *info, ULONG *reparse_tag)
 {
@@ -1492,6 +1548,7 @@ attributes_from_dir(LPCWSTR pszFile, BY_HANDLE_FILE_INFORMATION *info, ULONG *re
     find_data_to_file_info(&FileData, info, reparse_tag);
     return TRUE;
 }
+#endif
 
 static BOOL
 get_target_path(HANDLE hdl, wchar_t **target_path)
@@ -1531,6 +1588,7 @@ get_target_path(HANDLE hdl, wchar_t **target_path)
     return TRUE;
 }
 
+#ifndef TARGET_WINDOWS_STORE
 static int
 win32_xstat_impl(const wchar_t *path, struct _Py_stat_struct *result,
                  BOOL traverse)
@@ -1622,6 +1680,7 @@ win32_xstat_impl(const wchar_t *path, struct _Py_stat_struct *result,
     }
     return 0;
 }
+#endif
 
 static int
 win32_xstat(const wchar_t *path, struct _Py_stat_struct *result, BOOL traverse)
@@ -3238,7 +3297,7 @@ posix_getcwd(int use_bytes)
 
         buf = tmpbuf;
 #ifdef MS_WINDOWS
-        cwd = getcwd(buf, (int)buflen);
+        cwd = _getcwd(buf, (int)buflen);
 #else
         cwd = getcwd(buf, buflen);
 #endif
@@ -3288,7 +3347,7 @@ os_getcwdb_impl(PyObject *module)
 }
 
 
-#if ((!defined(HAVE_LINK)) && defined(MS_WINDOWS))
+#if ((!defined(HAVE_LINK)) && defined(MS_WINDOWS) && !defined(TARGET_WINDOWS_STORE))
 #define HAVE_LINK 1
 #endif
 
@@ -3345,7 +3404,7 @@ os_link_impl(PyObject *module, path_t *src, path_t *dst, int src_dir_fd,
 
 #ifdef MS_WINDOWS
     Py_BEGIN_ALLOW_THREADS
-    result = CreateHardLinkW(dst->wide, src->wide, NULL);
+    result = CreateHardLink(dst->wide, src->wide, NULL);
     Py_END_ALLOW_THREADS
 
     if (!result)
@@ -3676,6 +3735,18 @@ os__getfinalpathname_impl(PyObject *module, PyObject *path)
     if (path_wchar == NULL)
         return NULL;
 
+#ifdef TARGET_WINDOWS_STORE 
+    CREATEFILE2_EXTENDED_PARAMETERS exPar;
+    memset(&exPar, 0, sizeof(CREATEFILE2_EXTENDED_PARAMETERS));
+    /* FILE_FLAG_BACKUP_SEMANTICS is required to open a directory */
+    exPar.dwFileFlags = FILE_FLAG_BACKUP_SEMANTICS;
+    hFile = CreateFile2(
+        path_wchar,
+        0, /* desired access */
+        0, /* share mode */
+        OPEN_EXISTING,
+        &exPar);
+#else
     hFile = CreateFileW(
         path_wchar,
         0, /* desired access */
@@ -3685,7 +3756,7 @@ os__getfinalpathname_impl(PyObject *module, PyObject *path)
         /* FILE_FLAG_BACKUP_SEMANTICS is required to open a directory */
         FILE_FLAG_BACKUP_SEMANTICS,
         NULL);
-
+#endif
     if(hFile == INVALID_HANDLE_VALUE)
         return win32_error_object("CreateFileW", path);
 
@@ -3777,12 +3848,14 @@ os__getvolumepathname_impl(PyObject *module, PyObject *path)
     mountpath = PyMem_New(wchar_t, buflen);
     if (mountpath == NULL)
         return PyErr_NoMemory();
-
+#ifdef TARGET_WINDOWS_STORE
+    ret = FALSE;
+#else
     Py_BEGIN_ALLOW_THREADS
     ret = GetVolumePathNameW(path_wchar, mountpath,
                              Py_SAFE_DOWNCAST(buflen, size_t, DWORD));
     Py_END_ALLOW_THREADS
-
+#endif
     if (!ret) {
         result = win32_error_object("_getvolumepathname", path);
         goto exit;
@@ -4107,11 +4180,17 @@ os_system_impl(PyObject *module, Py_UNICODE *command)
 /*[clinic end generated code: output=96c4dffee36dfb48 input=303f5ce97df606b0]*/
 {
     long result;
+#ifdef TARGET_WINDOWS_STORE
+    PyErr_WarnEx(PyExc_DeprecationWarning,
+        "system has been deprecated for UWP apps.", 1);
+    result = 0;
+#else
     Py_BEGIN_ALLOW_THREADS
     _Py_BEGIN_SUPPRESS_IPH
     result = _wsystem(command);
     _Py_END_SUPPRESS_IPH
     Py_END_ALLOW_THREADS
+#endif
     return result;
 }
 #else /* MS_WINDOWS */
@@ -4555,7 +4634,7 @@ os_utime_impl(PyObject *module, path_t *path, PyObject *times, PyObject *ns,
 /*[clinic end generated code: output=cfcac69d027b82cf input=081cdc54ca685385]*/
 {
 #ifdef MS_WINDOWS
-    HANDLE hFile;
+    HANDLE hFile = NULL;
     FILETIME atime, mtime;
 #else
     int result;
@@ -4634,9 +4713,18 @@ os_utime_impl(PyObject *module, path_t *path, PyObject *times, PyObject *ns,
 
 #ifdef MS_WINDOWS
     Py_BEGIN_ALLOW_THREADS
+#ifdef TARGET_WINDOWS_STORE
+    CREATEFILE2_EXTENDED_PARAMETERS exPar;
+    memset(&exPar, 0, sizeof(CREATEFILE2_EXTENDED_PARAMETERS));
+    exPar.dwFileFlags = FILE_FLAG_BACKUP_SEMANTICS;
+    hFile = CreateFile2(path->wide, FILE_WRITE_ATTRIBUTES, 0,
+                        OPEN_EXISTING,
+                        &exPar);
+#else
     hFile = CreateFileW(path->wide, FILE_WRITE_ATTRIBUTES, 0,
                         NULL, OPEN_EXISTING,
                         FILE_FLAG_BACKUP_SEMANTICS, NULL);
+#endif
     Py_END_ALLOW_THREADS
     if (hFile == INVALID_HANDLE_VALUE) {
         path_error(path);
@@ -4911,6 +4999,10 @@ static PyObject *
 os_execv_impl(PyObject *module, path_t *path, PyObject *argv)
 /*[clinic end generated code: output=3b52fec34cd0dafd input=9bac31efae07dac7]*/
 {
+#ifdef TARGET_WINDOWS_STORE
+    PyErr_WarnEx(PyExc_DeprecationWarning,
+        "Using execv is deprecated on UWP", 1);
+#else
     EXECV_CHAR **argvlist;
     Py_ssize_t argc;
 
@@ -4950,6 +5042,7 @@ os_execv_impl(PyObject *module, path_t *path, PyObject *argv)
     /* If we get here it's definitely an error */
 
     free_string_array(argvlist, argc);
+#endif
     return posix_error();
 }
 
@@ -4971,6 +5064,10 @@ static PyObject *
 os_execve_impl(PyObject *module, path_t *path, PyObject *argv, PyObject *env)
 /*[clinic end generated code: output=ff9fa8e4da8bde58 input=626804fa092606d9]*/
 {
+#ifdef TARGET_WINDOWS_STORE
+    PyErr_WarnEx(PyExc_DeprecationWarning,
+        "Using execv is deprecated on UWP", 1);
+#else
     EXECV_CHAR **argvlist = NULL;
     EXECV_CHAR **envlist;
     Py_ssize_t argc, envc;
@@ -5031,6 +5128,7 @@ os_execve_impl(PyObject *module, path_t *path, PyObject *argv, PyObject *env)
   fail:
     if (argvlist)
         free_string_array(argvlist, argc);
+#endif
     return NULL;
 }
 
@@ -6401,7 +6499,7 @@ os_getuid_impl(PyObject *module)
 #endif /* HAVE_GETUID */
 
 
-#ifdef MS_WINDOWS
+#if defined(MS_WINDOWS) && !defined(TARGET_WINDOWS_STORE)
 #define HAVE_KILL
 #endif /* MS_WINDOWS */
 
@@ -7056,7 +7154,7 @@ exit:
 
 #endif /* HAVE_READLINK */
 
-#if !defined(HAVE_READLINK) && defined(MS_WINDOWS)
+#if !defined(HAVE_READLINK) && defined(MS_WINDOWS) && !defined(TARGET_WINDOWS_STORE)
 
 static PyObject *
 win_readlink(PyObject *self, PyObject *args, PyObject *kwargs)
@@ -7388,6 +7486,15 @@ os_times_impl(PyObject *module)
 /*[clinic end generated code: output=35f640503557d32a input=2bf9df3d6ab2e48b]*/
 #ifdef MS_WINDOWS
 {
+#ifdef TARGET_WINDOWS_STORE
+    /* No process times are available to Store apps */
+    return build_times_result(
+        (double)0,
+        (double)0,
+        (double)0,
+        (double)0,
+        (double)0);
+#else
     FILETIME create, exit, kernel, user;
     HANDLE hProc;
     hProc = GetCurrentProcess();
@@ -7405,6 +7512,7 @@ os_times_impl(PyObject *module)
         (double)0,
         (double)0,
         (double)0);
+#endif
 }
 #else /* MS_WINDOWS */
 {
@@ -10405,8 +10513,8 @@ static HINSTANCE (CALLBACK *Py_ShellExecuteW)(HWND, LPCWSTR, LPCWSTR, LPCWSTR,
 static int
 check_ShellExecute()
 {
+#ifndef TARGET_WINDOWS_STORE
     HINSTANCE hShell32;
-
     /* only recheck */
     if (-1 == has_ShellExecute) {
         Py_BEGIN_ALLOW_THREADS
@@ -10420,6 +10528,7 @@ check_ShellExecute()
             has_ShellExecute = 0;
         }
     }
+#endif
     return has_ShellExecute;
 }
 
@@ -11112,6 +11221,11 @@ static int
 os_get_handle_inheritable_impl(PyObject *module, intptr_t handle)
 /*[clinic end generated code: output=36be5afca6ea84d8 input=cfe99f9c05c70ad1]*/
 {
+#ifdef TARGET_WINDOWS_STORE
+    PyErr_WarnEx(PyExc_DeprecationWarning,
+        "os.get_handle_inheritable has been deprecated for UWP apps.", 1);
+    return 0;
+#else
     DWORD flags;
 
     if (!GetHandleInformation((HANDLE)handle, &flags)) {
@@ -11120,6 +11234,7 @@ os_get_handle_inheritable_impl(PyObject *module, intptr_t handle)
     }
 
     return flags & HANDLE_FLAG_INHERIT;
+#endif
 }
 
 
@@ -11137,11 +11252,16 @@ os_set_handle_inheritable_impl(PyObject *module, intptr_t handle,
                                int inheritable)
 /*[clinic end generated code: output=021d74fe6c96baa3 input=7a7641390d8364fc]*/
 {
+#ifdef TARGET_WINDOWS_STORE
+    PyErr_WarnEx(PyExc_DeprecationWarning,
+        "os.set_handle_inheritable has been deprecated for UWP apps.", 1);
+#else
     DWORD flags = inheritable ? HANDLE_FLAG_INHERIT : 0;
     if (!SetHandleInformation((HANDLE)handle, HANDLE_FLAG_INHERIT, flags)) {
         PyErr_SetFromWindowsErr(0);
         return NULL;
     }
+#endif
     Py_RETURN_NONE;
 }
 #endif /* MS_WINDOWS */
@@ -12224,7 +12344,7 @@ static PyMethodDef posix_methods[] = {
                         METH_VARARGS | METH_KEYWORDS,
                         readlink__doc__},
 #endif /* HAVE_READLINK */
-#if !defined(HAVE_READLINK) && defined(MS_WINDOWS)
+#if !defined(HAVE_READLINK) && defined(MS_WINDOWS) && !defined(TARGET_WINDOWS_STORE)
     {"readlink",        (PyCFunction)win_readlink,
                         METH_VARARGS | METH_KEYWORDS,
                         readlink__doc__},
@@ -12395,6 +12515,7 @@ static PyMethodDef posix_methods[] = {
 static int
 enable_symlink()
 {
+#ifndef TARGET_WINDOWS_STORE
     HANDLE tok;
     TOKEN_PRIVILEGES tok_priv;
     LUID luid;
@@ -12416,6 +12537,10 @@ enable_symlink()
 
     /* ERROR_NOT_ALL_ASSIGNED returned when the privilege can't be assigned. */
     return GetLastError() == ERROR_NOT_ALL_ASSIGNED ? 0 : 1;
+#else
+    // see https://blogs.windows.com/buildingapps/2016/12/02/symlinks-windows-10/
+    return 0;
+#endif // ! TARGET_WINDOWS_STORE
 }
 #endif /* defined(HAVE_SYMLINK) && defined(MS_WINDOWS) */
 

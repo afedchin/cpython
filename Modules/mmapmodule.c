@@ -434,7 +434,21 @@ mmap_size_method(mmap_object *self,
     if (self->file_handle != INVALID_HANDLE_VALUE) {
         DWORD low,high;
         long long size;
+#ifdef TARGET_WINDOWS_STORE
+        FILE_STANDARD_INFO fileStandardInfo;
+        if (!GetFileInformationByHandleEx(self->file_handle, FileStandardInfo, &fileStandardInfo, sizeof(fileStandardInfo)))
+        {
+            /* It might be that the function appears to have failed,
+            when indeed its size equals INVALID_FILE_SIZE */
+            DWORD error = GetLastError();
+            if (error != NO_ERROR)
+                return PyErr_SetFromWindowsErr(error);
+        }
+        high = fileStandardInfo.EndOfFile.HighPart;
+        low = fileStandardInfo.EndOfFile.LowPart;
+#else
         low = GetFileSize(self->file_handle, &high);
+#endif
         if (low == INVALID_FILE_SIZE) {
             /* It might be that the function appears to have failed,
                when indeed its size equals INVALID_FILE_SIZE */
@@ -509,13 +523,27 @@ mmap_resize_method(mmap_object *self,
         /* Change the size of the file */
         SetEndOfFile(self->file_handle);
         /* Create another mapping object and remap the file view */
-        self->map_handle = CreateFileMapping(
+#ifdef TARGET_WINDOWS_STORE
+		extern size_t uwp_Utf8ToW(const char* src, wchar_t* buffer, int maxlen);
+		wchar_t wtag[MAX_PATH];
+
+		uwp_Utf8ToW(self->tagname, wtag, MAX_PATH);
+
+		self->map_handle = CreateFileMappingW(self->file_handle,
+			NULL,
+			PAGE_READWRITE,
+			0,
+			0,
+			wtag);
+#else
+		self->map_handle = CreateFileMapping(
             self->file_handle,
             NULL,
             PAGE_READWRITE,
             0,
             0,
             self->tagname);
+#endif
         if (self->map_handle != NULL) {
             self->data = (char *) MapViewOfFile(self->map_handle,
                                                 FILE_MAP_WRITE,
@@ -1334,7 +1362,21 @@ new_mmap_object(PyTypeObject *type, PyObject *args, PyObject *kwdict)
         }
         if (!map_size) {
             DWORD low,high;
+#ifdef TARGET_WINDOWS_STORE
+            FILE_STANDARD_INFO fileStandardInfo;
+            if (!GetFileInformationByHandleEx(fh, FileStandardInfo, &fileStandardInfo, sizeof(fileStandardInfo)))
+            {
+                /* It might be that the function appears to have failed,
+                when indeed its size equals INVALID_FILE_SIZE */
+                DWORD error = GetLastError();
+                if (error != NO_ERROR)
+                    return PyErr_SetFromWindowsErr(error);
+            }
+            high = fileStandardInfo.EndOfFile.HighPart;
+            low = fileStandardInfo.EndOfFile.LowPart;
+#else
             low = GetFileSize(fh, &high);
+#endif
             /* low might just happen to have the value INVALID_FILE_SIZE;
                so we need to check the last error also. */
             if (low == INVALID_FILE_SIZE &&
@@ -1398,12 +1440,26 @@ new_mmap_object(PyTypeObject *type, PyObject *args, PyObject *kwdict)
     off_lo = (DWORD)(offset & 0xFFFFFFFF);
     /* For files, it would be sufficient to pass 0 as size.
        For anonymous maps, we have to pass the size explicitly. */
+#ifdef TARGET_WINDOWS_STORE
+	extern size_t uwp_Utf8ToW(const char* src, wchar_t* buffer, int maxlen);
+	wchar_t wtag[MAX_PATH];
+
+	uwp_Utf8ToW(m_obj->tagname, wtag, MAX_PATH);
+
+	m_obj->map_handle = CreateFileMappingW(m_obj->file_handle,
+		NULL,
+		flProtect,
+		size_hi,
+		size_lo,
+		wtag);
+#else
     m_obj->map_handle = CreateFileMapping(m_obj->file_handle,
                                           NULL,
                                           flProtect,
                                           size_hi,
                                           size_lo,
                                           m_obj->tagname);
+#endif
     if (m_obj->map_handle != NULL) {
         m_obj->data = (char *) MapViewOfFile(m_obj->map_handle,
                                              dwDesiredAccess,

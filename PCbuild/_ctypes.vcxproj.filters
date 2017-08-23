@@ -61,5 +61,11 @@
     <CustomBuild Include="..\Modules\_ctypes\libffi_msvc\win64.asm">
       <Filter>Source Files</Filter>
     </CustomBuild>
+    <CustomBuild Include="..\Modules\_ctypes\libffi_msvc\arm.asm">
+      <Filter>Source Files</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\PC\python_nt.rc" />
   </ItemGroup>
 </Project>

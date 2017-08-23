@@ -1,12 +1,24 @@
 /* Python interpreter main program */
 
 #include "Python.h"
+#ifdef TARGET_WINDOWS_STORE
+#define WINDOWS_LEAN_AND_MEAN
+#include <windows.h>
+#endif
 #include "osdefs.h"
 
 #include <locale.h>
 
 #if defined(MS_WINDOWS) || defined(__CYGWIN__)
+#define WINDOWS_LEAN_AND_MEAN
 #include <windows.h>
+#ifdef TARGET_WINDOWS_STORE
+/* UWP apps do not have environment variables */
+extern char* win10_getenv(const char* n);
+extern wchar_t* win10_wgetenv(const wchar_t* n);
+#define getenv(v) win10_getenv(v)
+#define _wgetenv(v) win10_wgetenv(v)
+#endif
 #ifdef HAVE_IO_H
 #include <io.h>
 #endif

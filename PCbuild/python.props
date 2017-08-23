@@ -10,12 +10,12 @@
 
     We set BasePlatformToolset for ICC's benefit, it's otherwise ignored.
     -->
-    <BasePlatformToolset Condition="'$(BasePlatformToolset)' == '' and '$(VCTargetsPath14)' != ''">v140</BasePlatformToolset>
-    <BasePlatformToolset Condition="'$(BasePlatformToolset)' == '' and '$(VCTargetsPath12)' != ''">v120</BasePlatformToolset>
-    <BasePlatformToolset Condition="'$(BasePlatformToolset)' == '' and '$(VCTargetsPath11)' != ''">v110</BasePlatformToolset>
-    <BasePlatformToolset Condition="'$(BasePlatformToolset)' == '' and '$(VCTargetsPath10)' != ''">v100</BasePlatformToolset>
+    <BasePlatformToolset Condition="'$(BasePlatformToolset)'=='' and '$(VCTargetsPath14)'!=''">v140</BasePlatformToolset>
+    <BasePlatformToolset Condition="'$(BasePlatformToolset)'=='' and '$(VCTargetsPath12)'!=''">v120</BasePlatformToolset>
+    <BasePlatformToolset Condition="'$(BasePlatformToolset)'=='' and '$(VCTargetsPath11)'!=''">v110</BasePlatformToolset>
+    <BasePlatformToolset Condition="'$(BasePlatformToolset)'=='' and '$(VCTargetsPath10)'!=''">v100</BasePlatformToolset>
 
-    <PlatformToolset Condition="'$(PlatformToolset)' == ''">$(BasePlatformToolset)</PlatformToolset>
+    <PlatformToolset Condition="'$(PlatformToolset)'==''">$(BasePlatformToolset)</PlatformToolset>
     <ICCBuild>false</ICCBuild>
     <ICCBuild Condition="$(PlatformToolset.StartsWith(`Intel C++ Compiler`))">true</ICCBuild>
 
@@ -23,41 +23,49 @@
     Convincing MSVC/MSBuild to prefer our platform names is too difficult,
     so we define our own constant ArchName and use wherever we need it.
     -->
-    <ArchName Condition="'$(ArchName)' == '' and $(Platform) == 'x64'">amd64</ArchName>
-    <ArchName Condition="'$(ArchName)' == ''">win32</ArchName>
+    <ArchName Condition="'$(ArchName)'=='' and '$(Platform)'=='ARM'">arm</ArchName>
+    <ArchName Condition="'$(ArchName)'=='' and '$(Platform)'=='x64'">amd64</ArchName>
+    <ArchName Condition="'$(ArchName)'==''">win32</ArchName>
+    <ArchName Condition="'$(ApplicationType)'=='Windows Store'">$(ArchName)-uwp</ArchName>
     
     <!-- Root directory of the repository -->
     <PySourcePath Condition="'$(PySourcePath)' == ''">$([System.IO.Path]::GetFullPath($(MSBuildThisFileDirectory)\..\))</PySourcePath>
     <PySourcePath Condition="!HasTrailingSlash($(PySourcePath))">$(PySourcePath)\</PySourcePath>
     
     <!-- Directory where build outputs are put -->
+    <!--
     <BuildPath32 Condition="'$(Py_OutDir)' == ''">$(PySourcePath)PCBuild\win32\</BuildPath32>
     <BuildPath32 Condition="'$(Py_OutDir)' != ''">$(Py_OutDir)\win32\</BuildPath32>
     <BuildPath64 Condition="'$(Py_OutDir)' == ''">$(PySourcePath)PCBuild\amd64\</BuildPath64>
     <BuildPath64 Condition="'$(Py_OutDir)' != ''">$(Py_OutDir)\amd64\</BuildPath64>
     <BuildPath Condition="'$(ArchName)' == 'win32'">$(BuildPath32)</BuildPath>
     <BuildPath Condition="'$(ArchName)' == 'amd64'">$(BuildPath64)</BuildPath>
-    <BuildPath Condition="'$(BuildPath)' == ''">$(PySourcePath)PCBuild\$(ArchName)\</BuildPath>
+    -->
+    <BuildPath Condition="'$(BuildPath)'==''">$(PySourcePath)PCBuild\$(ArchName)\</BuildPath>
     <BuildPath Condition="!HasTrailingSlash($(BuildPath))">$(BuildPath)\</BuildPath>
     
     <!-- Directories of external projects. tcltk is handled in tcltk.props -->
+    <ExternalsIncludeDir>$(PySourcePath)..\vcpkg\installed\$(PlatformTarget)-uwp\include</ExternalsIncludeDir>
+    <ExternalsLibDir Condition="'$(Configuration)'=='Debug'">$(PySourcePath)..\vcpkg\installed\$(PlatformTarget)-uwp\debug\lib</ExternalsLibDir>
+    <ExternalsLibDir Condition="'$(Configuration)'!='Debug'">$(PySourcePath)..\vcpkg\installed\$(PlatformTarget)-uwp\lib</ExternalsLibDir>
+
     <ExternalsDir>$([System.IO.Path]::GetFullPath(`$(PySourcePath)externals\`))</ExternalsDir>
-    <sqlite3Dir>$(ExternalsDir)sqlite-3.14.2.0\</sqlite3Dir>
-    <bz2Dir>$(ExternalsDir)bzip2-1.0.6\</bz2Dir>
-    <lzmaDir>$(ExternalsDir)xz-5.2.2\</lzmaDir>
-    <opensslDir>$(ExternalsDir)openssl-1.0.2k\</opensslDir>
-    <opensslIncludeDir>$(opensslDir)include32</opensslIncludeDir>
-    <opensslIncludeDir Condition="'$(ArchName)' == 'amd64'">$(opensslDir)include64</opensslIncludeDir>
+    <sqlite3Dir>$(PySourcePath)..\vcpkg\installed\$(PlatformTarget)-uwp\include</sqlite3Dir>
+    <bz2Dir>$(PySourcePath)..\vcpkg\installed\$(PlatformTarget)-uwp\include</bz2Dir>
+    <lzmaDir>$(PySourcePath)..\vcpkg\installed\$(PlatformTarget)-uwp\include</lzmaDir>
+    <opensslDir>$(PySourcePath)..\vcpkg\installed\$(PlatformTarget)-uwp\include</opensslDir>
+    <opensslIncludeDir>$(PySourcePath)..\vcpkg\installed\$(PlatformTarget)-uwp\include</opensslIncludeDir>
     <nasmDir>$(ExternalsDir)\nasm-2.11.06\</nasmDir>
     
     <!-- Suffix for all binaries when building for debug -->
-    <PyDebugExt Condition="'$(PyDebugExt)' == '' and $(Configuration) == 'Debug'">_d</PyDebugExt>
+    <PyDebugExt Condition="'$(PyDebugExt)' == '' and $(Configuration) == 'Debug'"></PyDebugExt>
     
     <!-- Suffix for versions/keys when building with test markers -->
     <PyTestExt Condition="$(UseTestMarker) == 'true'">-test</PyTestExt>
     
     <!-- Suffix for versions/keys when building for particular platforms -->
     <PyArchExt Condition="'$(ArchName)' == 'win32'">-32</PyArchExt>
+    <PyArchExt Condition="'$(ArchName)' == 'ARM'">-arm</PyArchExt>
     
     <!-- Full path of the resulting python.exe binary -->
     <PythonExe Condition="'$(PythonExe)' == ''">$(BuildPath)python$(PyDebugExt).exe</PythonExe>
@@ -155,6 +163,7 @@
     <!-- The version and platform tag to include in .pyd filenames -->
     <PydTag Condition="$(ArchName) == 'win32'">.cp$(MajorVersionNumber)$(MinorVersionNumber)-win32</PydTag>
     <PydTag Condition="$(ArchName) == 'amd64'">.cp$(MajorVersionNumber)$(MinorVersionNumber)-win_amd64</PydTag>
+    <PydTag Condition="$(ArchName) == 'ARM'">.cp$(MajorVersionNumber)$(MinorVersionNumber)-win_arm</PydTag>
     
     <!-- The version number for sys.winver -->
     <SysWinVer>$(MajorVersionNumber).$(MinorVersionNumber)$(PyArchExt)$(PyTestExt)</SysWinVer>

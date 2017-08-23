@@ -102,7 +102,6 @@ initialize_function_pointers(void)
     GUID GuidAcceptEx = WSAID_ACCEPTEX;
     GUID GuidConnectEx = WSAID_CONNECTEX;
     GUID GuidDisconnectEx = WSAID_DISCONNECTEX;
-    HINSTANCE hKernel32;
     SOCKET s;
     DWORD dwBytes;
 
@@ -122,10 +121,14 @@ initialize_function_pointers(void)
     }
 
     closesocket(s);
-
+#ifndef TARGET_WINDOWS_STORE
+    HINSTANCE hKernel32;
     /* On WinXP we will have Py_CancelIoEx == NULL */
     hKernel32 = GetModuleHandle("KERNEL32");
     *(FARPROC *)&Py_CancelIoEx = GetProcAddress(hKernel32, "CancelIoEx");
+#else
+    Py_CancelIoEx = CancelIoEx;
+#endif // !TARGET_WINDOWS_STORE
     return 0;
 }
 
@@ -256,6 +259,11 @@ PyDoc_STRVAR(
 static PyObject *
 overlapped_RegisterWaitWithQueue(PyObject *self, PyObject *args)
 {
+#ifdef TARGET_WINDOWS_STORE
+    PyErr_WarnEx(PyExc_FutureWarning,
+        "RegisterWaitWithQueue isn't implemented for UWP apps.", 1);
+    Py_RETURN_NONE;
+#else
     HANDLE NewWaitObject;
     HANDLE Object;
     ULONG Milliseconds;
@@ -287,6 +295,7 @@ overlapped_RegisterWaitWithQueue(PyObject *self, PyObject *args)
     }
 
     return Py_BuildValue(F_HANDLE, NewWaitObject);
+#endif // TARGET_WINDOWS_STORE
 }
 
 PyDoc_STRVAR(
@@ -297,6 +306,10 @@ PyDoc_STRVAR(
 static PyObject *
 overlapped_UnregisterWait(PyObject *self, PyObject *args)
 {
+#ifdef TARGET_WINDOWS_STORE
+    PyErr_WarnEx(PyExc_FutureWarning,
+        "UnregisterWait isn't implemented for UWP apps.", 1);
+#else
     HANDLE WaitHandle;
     BOOL ret;
 
@@ -309,6 +322,7 @@ overlapped_UnregisterWait(PyObject *self, PyObject *args)
 
     if (!ret)
         return SetFromWindowsErr(0);
+#endif
     Py_RETURN_NONE;
 }
 
@@ -320,6 +334,10 @@ PyDoc_STRVAR(
 static PyObject *
 overlapped_UnregisterWaitEx(PyObject *self, PyObject *args)
 {
+#ifdef TARGET_WINDOWS_STORE
+    PyErr_WarnEx(PyExc_FutureWarning,
+        "UnregisterWaitEx isn't implemented for UWP apps.", 1);
+#else
     HANDLE WaitHandle, Event;
     BOOL ret;
 
@@ -332,6 +350,7 @@ overlapped_UnregisterWaitEx(PyObject *self, PyObject *args)
 
     if (!ret)
         return SetFromWindowsErr(0);
+#endif
     Py_RETURN_NONE;
 }
 
@@ -566,7 +585,10 @@ Overlapped_dealloc(OverlappedObject *self)
     BOOL wait = FALSE;
     BOOL ret;
 
-    if (!HasOverlappedIoCompleted(&self->overlapped) &&
+    if (
+#ifndef TARGET_WINDOWS_STORE
+        !HasOverlappedIoCompleted(&self->overlapped) &&
+#endif // !TARGET_WINDOWS_STORE
         self->type != TYPE_NOT_STARTED)
     {
         if (Py_CancelIoEx && Py_CancelIoEx(self->handle, &self->overlapped))
@@ -622,7 +644,10 @@ Overlapped_cancel(OverlappedObject *self)
         || self->type == TYPE_WAIT_NAMED_PIPE_AND_CONNECT)
         Py_RETURN_NONE;
 
-    if (!HasOverlappedIoCompleted(&self->overlapped)) {
+#ifndef TARGET_WINDOWS_STORE
+    if (!HasOverlappedIoCompleted(&self->overlapped))
+#endif
+    {
         Py_BEGIN_ALLOW_THREADS
         if (Py_CancelIoEx)
             ret = Py_CancelIoEx(self->handle, &self->overlapped);
@@ -1103,6 +1128,11 @@ PyDoc_STRVAR(
 static PyObject *
 Overlapped_ConnectNamedPipe(OverlappedObject *self, PyObject *args)
 {
+#ifdef TARGET_WINDOWS_STORE
+    PyErr_WarnEx(PyExc_FutureWarning,
+        "ConnectNamedPipe isn't implemented for UWP apps.", 1);
+    Py_RETURN_NONE;
+#else
     HANDLE Pipe;
     BOOL ret;
     DWORD err;
@@ -1134,6 +1164,7 @@ Overlapped_ConnectNamedPipe(OverlappedObject *self, PyObject *args)
             self->type = TYPE_NOT_STARTED;
             return SetFromWindowsErr(err);
     }
+#endif
 }
 
 PyDoc_STRVAR(
@@ -1144,6 +1175,11 @@ PyDoc_STRVAR(
 static PyObject *
 ConnectPipe(OverlappedObject *self, PyObject *args)
 {
+#ifdef TARGET_WINDOWS_STORE
+    PyErr_WarnEx(PyExc_FutureWarning,
+        "ConnectPipe isn't implemented for UWP apps.", 1);
+    Py_RETURN_NONE;
+#else
     PyObject *AddressObj;
     wchar_t *Address;
     HANDLE PipeHandle;
@@ -1166,6 +1202,7 @@ ConnectPipe(OverlappedObject *self, PyObject *args)
     if (PipeHandle == INVALID_HANDLE_VALUE)
         return SetFromWindowsErr(0);
     return Py_BuildValue(F_HANDLE, PipeHandle);
+#endif
 }
 
 static PyObject*
@@ -1177,7 +1214,10 @@ Overlapped_getaddress(OverlappedObject *self)
 static PyObject*
 Overlapped_getpending(OverlappedObject *self)
 {
-    return PyBool_FromLong(!HasOverlappedIoCompleted(&self->overlapped) &&
+    return PyBool_FromLong(
+#ifndef TARGET_WINDOWS_STORE
+        !HasOverlappedIoCompleted(&self->overlapped) &&
+#endif
                            self->type != TYPE_NOT_STARTED);
 }
 

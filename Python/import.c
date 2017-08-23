@@ -9,6 +9,10 @@
 #include "marshal.h"
 #include "code.h"
 #include "frameobject.h"
+#ifdef TARGET_WINDOWS_STORE
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#endif // TARGET_WINDOWS_STORE
 #include "osdefs.h"
 #include "importdl.h"
 

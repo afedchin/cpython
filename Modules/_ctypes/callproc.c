@@ -749,7 +749,7 @@ static int _call_function_pointer(int flags,
     PyThreadState *_save = NULL; /* For Py_BLOCK_THREADS and Py_UNBLOCK_THREADS */
 #endif
     PyObject *error_object = NULL;
-    int *space;
+    int *space = NULL;
     ffi_cif cif;
     int cc;
 #ifdef MS_WIN32
@@ -970,6 +970,7 @@ error:
 static PyObject *
 GetComError(HRESULT errcode, GUID *riid, IUnknown *pIunk)
 {
+#ifndef TARGET_WINDOWS_STORE
     HRESULT hr;
     ISupportErrorInfo *psei = NULL;
     IErrorInfo *pei = NULL;
@@ -1035,6 +1036,7 @@ GetComError(HRESULT errcode, GUID *riid, IUnknown *pIunk)
         SysFreeString(helpfile);
     if (source)
         SysFreeString(source);
+#endif // !TARGET_WINDOWS_STORE
 
     return NULL;
 }
@@ -1216,7 +1218,9 @@ static PyObject *format_error(PyObject *self, PyObject *args)
     lpMsgBuf = FormatError(code);
     if (lpMsgBuf) {
         result = PyUnicode_FromWideChar(lpMsgBuf, wcslen(lpMsgBuf));
+#ifndef TARGET_WINDOWS_STORE
         LocalFree(lpMsgBuf);
+#endif
     } else {
         result = PyUnicode_FromString("<no description>");
     }
@@ -1243,7 +1247,11 @@ static PyObject *load_library(PyObject *self, PyObject *args)
     if (!name)
         return NULL;
 
+#ifdef TARGET_WINDOWS_STORE
+    hMod = LoadPackagedLibrary(name, 0);
+#else
     hMod = LoadLibraryW(name);
+#endif // TARGER_WINDOWS_STORE
     if (!hMod)
         return PyErr_SetFromWindowsErr(GetLastError());
 #ifdef _WIN64

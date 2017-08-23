@@ -4,6 +4,11 @@
 /* All sample MSDN wincrypt programs include the header below. It is at least
  * required with Min GW. */
 #  include <wincrypt.h>
+#ifdef TARGET_WINDOWS_STORE
+ /* UWP apps do not have environment variables */
+extern char* win10_getenv(const char* n);
+#define getenv(v) win10_getenv(v)
+#endif
 #else
 #  include <fcntl.h>
 #  ifdef HAVE_SYS_STAT_H
@@ -27,6 +32,7 @@ static int _Py_HashSecret_Initialized = 0;
 #endif
 
 #ifdef MS_WINDOWS
+#ifndef TARGET_WINDOWS_STORE
 static HCRYPTPROV hCryptProv = 0;
 
 static int
@@ -76,7 +82,9 @@ win32_urandom(unsigned char *buffer, Py_ssize_t size, int raise)
     }
     return 0;
 }
-
+#else
+extern int win32_urandom(unsigned char *buffer, Py_ssize_t size, int raise);
+#endif
 #else /* !MS_WINDOWS */
 
 #if defined(HAVE_GETRANDOM) || defined(HAVE_GETRANDOM_SYSCALL)
@@ -589,10 +597,12 @@ void
 _PyRandom_Fini(void)
 {
 #ifdef MS_WINDOWS
+#ifndef TARGET_WINDOWS_STORE
     if (hCryptProv) {
         CryptReleaseContext(hCryptProv, 0);
         hCryptProv = 0;
     }
+#endif
 #else
     dev_urandom_close();
 #endif

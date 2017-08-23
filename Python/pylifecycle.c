@@ -4,6 +4,10 @@
 
 #include "Python-ast.h"
 #undef Yield /* undefine macro conflicting with winbase.h */
+#ifdef TARGET_WINDOWS_STORE
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#endif // TARGET_WINDOWS_STORE
 #include "grammar.h"
 #include "node.h"
 #include "token.h"
@@ -30,10 +34,17 @@
 
 #ifdef MS_WINDOWS
 #undef BYTE
+#ifndef TARGET_WINDOWS_STORE
 #include "windows.h"
-
 extern PyTypeObject PyWindowsConsoleIO_Type;
 #define PyWindowsConsoleIO_Check(op) (PyObject_TypeCheck((op), &PyWindowsConsoleIO_Type))
+#else
+/* UWP apps do not have environment variables */
+extern char* win10_getenv(const char* n);
+extern wchar_t* win10_wgetenv(const wchar_t* n);
+#define getenv(v) win10_getenv(v)
+#define _wgetenv(v) win10_wgetenv(v)
+#endif
 #endif
 
 _Py_IDENTIFIER(flush);
@@ -226,9 +237,13 @@ static char*
 get_locale_encoding(void)
 {
 #ifdef MS_WINDOWS
+#ifdef TARGET_WINDOWS_STORE
+	return get_codec_name("UTF-8");
+#else
     char codepage[100];
     PyOS_snprintf(codepage, sizeof(codepage), "cp%d", GetACP());
     return get_codec_name(codepage);
+#endif
 #elif defined(HAVE_LANGINFO_H) && defined(CODESET)
     char* codeset = nl_langinfo(CODESET);
     if (!codeset || codeset[0] == '\0') {
@@ -1119,7 +1134,9 @@ create_stdio(PyObject* io,
 
 #ifdef MS_WINDOWS
     /* Windows console IO is always UTF-8 encoded */
+#ifndef TARGET_WINDOWS_STORE
     if (PyWindowsConsoleIO_Check(raw))
+#endif
         encoding = "utf-8";
 #endif
 
@@ -1461,7 +1478,11 @@ Py_FatalError(const char *msg)
 
 exit:
 #if defined(MS_WINDOWS) && defined(_DEBUG)
+#ifdef TARGET_WINDOWS_STORE
+	__debugbreak();
+#else
     DebugBreak();
+#endif // TARGET_WINDOWS_STORE
 #endif
     abort();
 }

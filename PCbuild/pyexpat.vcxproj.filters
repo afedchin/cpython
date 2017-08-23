@@ -32,5 +32,9 @@
     <ClCompile Include="..\Modules\expat\xmltok.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\Modules\expat\uwpapi.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="..\PC\python_nt.rc" />
   </ItemGroup>
 </Project>

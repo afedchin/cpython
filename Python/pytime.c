@@ -1,5 +1,9 @@
 #include "Python.h"
 #ifdef MS_WINDOWS
+#ifdef TARGET_WINDOWS_STORE
+#define WIN32_LEAN_AND_MEAN
+#include <WinSock2.h>
+#endif
 #include <windows.h>
 #endif
 
@@ -538,11 +542,12 @@ pygettimeofday(_PyTime_t *tp, _Py_clock_info_t *info, int raise)
        days). */
     *tp = large.QuadPart * 100 - 11644473600000000000;
     if (info) {
+        info->implementation = "GetSystemTimeAsFileTime()";
+        info->monotonic = 0;
+#ifndef TARGET_WINDOWS_STORE
         DWORD timeAdjustment, timeIncrement;
         BOOL isTimeAdjustmentDisabled, ok;
 
-        info->implementation = "GetSystemTimeAsFileTime()";
-        info->monotonic = 0;
         ok = GetSystemTimeAdjustment(&timeAdjustment, &timeIncrement,
                                      &isTimeAdjustmentDisabled);
         if (!ok) {
@@ -551,6 +556,10 @@ pygettimeofday(_PyTime_t *tp, _Py_clock_info_t *info, int raise)
         }
         info->resolution = timeIncrement * 1e-7;
         info->adjustable = 1;
+#else
+        info->resolution = 1e-7;
+        info->adjustable = 0;
+#endif // !TARGET_WINDOWS_STORE
     }
 
 #else   /* MS_WINDOWS */
@@ -654,10 +663,12 @@ pymonotonic(_PyTime_t *tp, _Py_clock_info_t *info, int raise)
     *tp = t * MS_TO_NS;
 
     if (info) {
-        DWORD timeAdjustment, timeIncrement;
-        BOOL isTimeAdjustmentDisabled, ok;
         info->implementation = "GetTickCount64()";
         info->monotonic = 1;
+#ifndef TARGET_WINDOWS_STORE
+        DWORD timeAdjustment, timeIncrement;
+        BOOL isTimeAdjustmentDisabled, ok;
+
         ok = GetSystemTimeAdjustment(&timeAdjustment, &timeIncrement,
                                      &isTimeAdjustmentDisabled);
         if (!ok) {
@@ -665,6 +676,9 @@ pymonotonic(_PyTime_t *tp, _Py_clock_info_t *info, int raise)
             return -1;
         }
         info->resolution = timeIncrement * 1e-7;
+#else
+        info->resolution = 1e-7;
+#endif // !TARGET_WINDOWS_STORE
         info->adjustable = 0;
     }
 

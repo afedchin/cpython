@@ -9,7 +9,7 @@
 #define PY_SSIZE_T_CLEAN
 #include "Python.h"
 
-#ifdef MS_WINDOWS
+#if defined(MS_WINDOWS) && !defined(TARGET_WINDOWS_STORE) // console isn't available on UWP
 
 #include "structmember.h"
 #ifdef HAVE_SYS_TYPES_H
@@ -207,7 +207,7 @@ _io__WindowsConsoleIO_close_impl(winconsoleio *self)
 /*[clinic end generated code: output=27ef95b66c29057b input=185617e349ae4c7b]*/
 {
     PyObject *res;
-    PyObject *exc, *val, *tb;
+    PyObject *exc = NULL, *val = NULL, *tb = NULL;
     int rc;
     _Py_IDENTIFIER(close);
     res = _PyObject_CallMethodId((PyObject*)&PyRawIOBase_Type,

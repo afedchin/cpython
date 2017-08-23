@@ -28,7 +28,9 @@ extern PyObject* PyInit__blake2(void);
 extern PyObject* PyInit_time(void);
 extern PyObject* PyInit__thread(void);
 #ifdef WIN32
+#ifndef TARGET_WINDOWS_STORE
 extern PyObject* PyInit_msvcrt(void);
+#endif
 extern PyObject* PyInit__locale(void);
 #endif
 extern PyObject* PyInit__codecs(void);
@@ -45,7 +47,9 @@ extern PyObject* PyInit_mmap(void);
 extern PyObject* PyInit__csv(void);
 extern PyObject* PyInit__sre(void);
 extern PyObject* PyInit_parser(void);
+#ifndef TARGET_WINDOWS_STORE
 extern PyObject* PyInit_winreg(void);
+#endif
 extern PyObject* PyInit__struct(void);
 extern PyObject* PyInit__datetime(void);
 extern PyObject* PyInit__functools(void);
@@ -59,7 +63,9 @@ extern PyObject* PyInit__codecs_iso2022(void);
 extern PyObject* PyInit__codecs_jp(void);
 extern PyObject* PyInit__codecs_kr(void);
 extern PyObject* PyInit__codecs_tw(void);
+#ifndef TARGET_WINDOWS_STORE
 extern PyObject* PyInit__winapi(void);
+#endif
 extern PyObject* PyInit__lsprof(void);
 extern PyObject* PyInit__ast(void);
 extern PyObject* PyInit__io(void);
@@ -105,13 +111,16 @@ struct _inittab _PyImport_Inittab[] = {
     {"_thread", PyInit__thread},
 #endif
 #ifdef WIN32
-    {"msvcrt", PyInit_msvcrt},
+#ifndef TARGET_WINDOWS_STORE
+	{ "msvcrt", PyInit_msvcrt },
+#endif // !TARGET_WINDOWS_STORE
     {"_locale", PyInit__locale},
 #endif
     {"_tracemalloc", PyInit__tracemalloc},
+#ifndef TARGET_WINDOWS_STORE
     /* XXX Should _winapi go in a WIN32 block?  not WIN64? */
     {"_winapi", PyInit__winapi},
-
+#endif
     {"_codecs", PyInit__codecs},
     {"_weakref", PyInit__weakref},
     {"_random", PyInit__random},
@@ -125,7 +134,9 @@ struct _inittab _PyImport_Inittab[] = {
     {"_csv", PyInit__csv},
     {"_sre", PyInit__sre},
     {"parser", PyInit_parser},
-    {"winreg", PyInit_winreg},
+#ifndef TARGET_WINDOWS_STORE
+	{"winreg", PyInit_winreg},
+#endif
     {"_struct", PyInit__struct},
     {"_datetime", PyInit__datetime},
     {"_functools", PyInit__functools},

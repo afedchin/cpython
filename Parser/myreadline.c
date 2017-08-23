@@ -98,7 +98,7 @@ my_fgets(char *buf, int len, FILE *fp)
     /* NOTREACHED */
 }
 
-#ifdef MS_WINDOWS
+#if defined(MS_WINDOWS) && !defined(TARGET_WINDOWS_STORE)
 /* Readline implementation using ReadConsoleW */
 
 extern char _get_console_type(HANDLE handle);
@@ -201,7 +201,7 @@ PyOS_StdioReadline(FILE *sys_stdin, FILE *sys_stdout, const char *prompt)
     size_t n;
     char *p, *pr;
 
-#ifdef MS_WINDOWS
+#if defined(MS_WINDOWS) && !defined(TARGET_WINDOWS_STORE)
     if (!Py_LegacyWindowsStdioFlag && sys_stdin == stdin) {
         HANDLE hStdIn, hStdErr;
 

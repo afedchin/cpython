@@ -9,6 +9,11 @@
 #endif
 #ifdef MS_WINDOWS
 #  include <windows.h>
+#  ifdef TARGET_WINDOWS_STORE
+/* UWP apps do not have environment variables */
+extern char* win10_getenv(const char* n);
+#define getenv(v) win10_getenv(v)
+#endif
 #endif
 #ifdef HAVE_SYS_RESOURCE_H
 #  include <sys/resource.h>
@@ -466,7 +471,9 @@ faulthandler_enable(void)
 
 #ifdef MS_WINDOWS
     assert(fatal_error.exc_handler == NULL);
+#ifndef TARGET_WINDOWS_STORE
     fatal_error.exc_handler = AddVectoredExceptionHandler(1, faulthandler_exc_handler);
+#endif
 #endif
     return 0;
 }
@@ -520,7 +527,9 @@ faulthandler_disable(void)
     }
 #ifdef MS_WINDOWS
     if (fatal_error.exc_handler != NULL) {
+#ifndef TARGET_WINDOWS_STORE
         RemoveVectoredExceptionHandler(fatal_error.exc_handler);
+#endif
         fatal_error.exc_handler = NULL;
     }
 #endif
@@ -908,7 +917,7 @@ faulthandler_unregister_py(PyObject *self, PyObject *args)
 static void
 faulthandler_suppress_crash_report(void)
 {
-#ifdef MS_WINDOWS
+#if defined(MS_WINDOWS) && !defined(TARGET_WINDOWS_STORE)
     UINT mode;
 
     /* Configure Windows to not display the Windows Error Reporting dialog */

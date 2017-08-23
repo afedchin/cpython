@@ -367,10 +367,15 @@ _io_open_impl(PyObject *module, PyObject *file, const char *mode,
     {
         PyObject *RawIO_class = (PyObject *)&PyFileIO_Type;
 #ifdef MS_WINDOWS
+#ifndef TARGET_WINDOWS_STORE
         if (!Py_LegacyWindowsStdioFlag && _PyIO_get_console_type(path_or_fd) != '\0') {
             RawIO_class = (PyObject *)&PyWindowsConsoleIO_Type;
             encoding = "utf-8";
         }
+#else
+        encoding = "utf-8";
+#endif // !TARGET_WINDOWS_STORE
+
 #endif
         raw = PyObject_CallFunction(RawIO_class,
                                     "OsiO", path_or_fd, rawmode, closefd, opener);
@@ -720,7 +725,7 @@ PyInit__io(void)
     PyStringIO_Type.tp_base = &PyTextIOBase_Type;
     ADD_TYPE(&PyStringIO_Type, "StringIO");
 
-#ifdef MS_WINDOWS
+#if defined (MS_WINDOWS) && !defined(TARGET_WINDOWS_STORE)
     /* WindowsConsoleIO */
     PyWindowsConsoleIO_Type.tp_base = &PyRawIOBase_Type;
     ADD_TYPE(&PyWindowsConsoleIO_Type, "_WindowsConsoleIO");

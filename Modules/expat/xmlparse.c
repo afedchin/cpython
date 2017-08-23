@@ -841,9 +841,13 @@ writeRandomBytes_arc4random(void * target, size_t count) {
 
 
 #ifdef _WIN32
-
+#ifndef TARGET_WINDOWS_STORE
 typedef BOOLEAN (APIENTRY *RTLGENRANDOM_FUNC)(PVOID, ULONG);
 HMODULE _Expat_LoadLibrary(LPCTSTR filename);  /* see loadlibrary.c */
+#else
+extern void win10_urandom(unsigned char *buf, size_t size);
+#endif // !TARGET_WINDOWS_STORE
+
 
 /* Obtain entropy on Windows XP / Windows Server 2003 and later.
  * Hint on RtlGenRandom and the following article from libsodium.
@@ -854,6 +858,7 @@ HMODULE _Expat_LoadLibrary(LPCTSTR filename);  /* see loadlibrary.c */
 static int
 writeRandomBytes_RtlGenRandom(void * target, size_t count) {
   int success = 0;  /* full count bytes written? */
+#ifndef TARGET_WINDOWS_STORE
   const HMODULE advapi32 = _Expat_LoadLibrary(TEXT("ADVAPI32.DLL"));
 
   if (advapi32) {
@@ -866,7 +871,10 @@ writeRandomBytes_RtlGenRandom(void * target, size_t count) {
     }
     FreeLibrary(advapi32);
   }
-
+#else
+  win10_urandom((PVOID)target, (ULONG)count);
+  success = 1;
+#endif // !TARGET_WINDOWS_STORE
   return success;
 }
 
@@ -904,6 +912,7 @@ gather_time_entropy(void)
 
 static unsigned long
 ENTROPY_DEBUG(const char * label, unsigned long entropy) {
+#ifndef TARGET_WINDOWS_STORE
   const char * const EXPAT_ENTROPY_DEBUG = getenv("EXPAT_ENTROPY_DEBUG");
   if (EXPAT_ENTROPY_DEBUG && ! strcmp(EXPAT_ENTROPY_DEBUG, "1")) {
     fprintf(stderr, "Entropy: %s --> 0x%0*lx (%lu bytes)\n",
@@ -911,6 +920,7 @@ ENTROPY_DEBUG(const char * label, unsigned long entropy) {
         (int)sizeof(entropy) * 2, entropy,
         (unsigned long)sizeof(entropy));
   }
+#endif
   return entropy;
 }
 

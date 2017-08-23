@@ -37,6 +37,14 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{A1A295E5-463C-437F-81CA-1F32367685DA}</ProjectGuid>
     <RootNamespace>sqlite3</RootNamespace>
+    <ApplicationType>Windows Store</ApplicationType>
+    <DefaultLanguage>en-US</DefaultLanguage>
+    <ApplicationTypeRevision>10.0</ApplicationTypeRevision>
+    <MinimumVisualStudioVersion>14.0</MinimumVisualStudioVersion>
+    <AppContainerApplication>true</AppContainerApplication>
+    <WindowsTargetPlatformVersion>10.0.14393.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformMinVersion>10.0.14393.0</WindowsTargetPlatformMinVersion>
+    <Keyword>Win32Proj</Keyword>
     <TargetExt>.pyd</TargetExt>
     <SupportPGO>false</SupportPGO>
   </PropertyGroup>

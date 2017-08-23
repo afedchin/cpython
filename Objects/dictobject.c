@@ -1915,7 +1915,7 @@ PyObject *
 _PyDict_FromKeys(PyObject *cls, PyObject *iterable, PyObject *value)
 {
     PyObject *it;       /* iter(iterable) */
-    PyObject *key;
+    PyObject *key = NULL;
     PyObject *d;
     int status;
 
@@ -1947,7 +1947,7 @@ _PyDict_FromKeys(PyObject *cls, PyObject *iterable, PyObject *value)
         if (PyAnySet_CheckExact(iterable)) {
             PyDictObject *mp = (PyDictObject *)d;
             Py_ssize_t pos = 0;
-            PyObject *key;
+            PyObject *key = NULL;
             Py_hash_t hash;
 
             if (dictresize(mp, ESTIMATE_SIZE(PySet_GET_SIZE(iterable)))) {

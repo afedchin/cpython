@@ -6,6 +6,10 @@
 #include "code.h"
 #include "frameobject.h"
 #include "structmember.h"
+#ifdef TARGET_WINDOWS_STORE
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#endif // TARGET_WINDOWS_STORE
 #include "osdefs.h"
 #ifdef HAVE_FCNTL_H
 #include <fcntl.h>

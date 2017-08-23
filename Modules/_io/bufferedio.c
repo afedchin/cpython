@@ -502,7 +502,7 @@ buffered_closed_get(buffered *self, void *context)
 static PyObject *
 buffered_close(buffered *self, PyObject *args)
 {
-    PyObject *res = NULL, *exc = NULL, *val, *tb;
+    PyObject *res = NULL, *exc = NULL, *val = NULL, *tb = NULL;
     int r;
 
     CHECK_INITIALIZED(self)
@@ -2244,7 +2244,7 @@ bufferedrwpair_writable(rwpair *self, PyObject *args)
 static PyObject *
 bufferedrwpair_close(rwpair *self, PyObject *args)
 {
-    PyObject *exc = NULL, *val, *tb;
+    PyObject *exc = NULL, *val = NULL, *tb = NULL;
     PyObject *ret = _forward_call(self->writer, &PyId_close, args);
     if (ret == NULL)
         PyErr_Fetch(&exc, &val, &tb);

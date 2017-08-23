@@ -16,6 +16,8 @@
 #include "structmember.h"
 #include "windows.h"
 
+#ifndef TARGET_WINDOWS_STORE
+
 static BOOL PyHKEY_AsHKEY(PyObject *ob, HKEY *pRes, BOOL bNoneOK);
 static BOOL clinic_HKEY_converter(PyObject *ob, void *p);
 static PyObject *PyHKEY_FromHKEY(HKEY h);
@@ -1953,4 +1955,4 @@ PyMODINIT_FUNC PyInit_winreg(void)
     return m;
 }
 
-
+#endif /* ! TARGET_WINDOWS_STORE */

@@ -67,6 +67,12 @@ WIN32 is still required for the locale module.
 
 #define MS_WIN32 /* only support win32 and greater. */
 #define MS_WINDOWS
+#ifdef WINAPI_FAMILY
+#   include <winapifamily.h>
+#   if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
+#       define TARGET_WINDOWS_STORE
+#   endif
+#endif
 #ifndef PYTHONPATH
 #	define PYTHONPATH L".\\DLLs;.\\lib"
 #endif
@@ -140,8 +146,13 @@ WIN32 is still required for the locale module.
 
 /* set the version macros for the windows headers */
 /* Python 3.5+ requires Windows Vista or greater */
+#if defined(TARGET_WINDOWS_STORE)
+#define Py_WINVER 0x0A00 /* _WIN32_WINNT_WIN10 */
+#define Py_NTDDI NTDDI_WIN10
+#else
 #define Py_WINVER 0x0600 /* _WIN32_WINNT_VISTA */
 #define Py_NTDDI NTDDI_VISTA
+#endif
 
 /* We only set these values when building Python - we don't want to force
    these values on extensions, as that will affect the prototypes and
@@ -289,13 +300,11 @@ Py_NO_ENABLE_SHARED to find out.  Also support MS_NO_COREDLL for b/w compat */
 			/* So MSVC users need not specify the .lib file in
 			their Makefile (other compilers are generally
 			taken care of by distutils.) */
-#			if defined(_DEBUG)
-#				pragma comment(lib,"python36_d.lib")
-#			elif defined(Py_LIMITED_API)
+#			if defined(Py_LIMITED_API)
 #				pragma comment(lib,"python3.lib")
 #			else
 #				pragma comment(lib,"python36.lib")
-#			endif /* _DEBUG */
+#			endif /* Py_LIMITED_API */
 #		endif /* _MSC_VER */
 #	endif /* Py_BUILD_CORE */
 #endif /* MS_COREDLL */

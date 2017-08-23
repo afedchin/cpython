@@ -939,11 +939,16 @@ Performance counter for benchmarking.");
 static PyObject*
 py_process_time(_Py_clock_info_t *info)
 {
+    double total;
 #if defined(MS_WINDOWS)
+#ifdef TARGET_WINDOWS_STORE
+    PyErr_WarnEx(PyExc_FutureWarning,
+        "GetProcessTimes() isn't implemented for UWP apps.", 1);
+    total = 0;
+#else
     HANDLE process;
     FILETIME creation_time, exit_time, kernel_time, user_time;
     ULARGE_INTEGER large;
-    double total;
     BOOL ok;
 
     process = GetCurrentProcess();
@@ -957,12 +962,14 @@ py_process_time(_Py_clock_info_t *info)
     large.u.LowPart = user_time.dwLowDateTime;
     large.u.HighPart = user_time.dwHighDateTime;
     total += (double)large.QuadPart;
+#endif // TARGET_WINDOWS_STORE
     if (info) {
         info->implementation = "GetProcessTimes()";
         info->resolution = 1e-7;
         info->monotonic = 1;
         info->adjustable = 0;
     }
+    
     return PyFloat_FromDouble(total * 1e-7);
 #else
 
@@ -1162,7 +1169,9 @@ get_zone(char *zone, int n, struct tm *p)
 #ifdef HAVE_STRUCT_TM_TM_ZONE
     strncpy(zone, p->tm_zone ? p->tm_zone : "   ", n);
 #else
+#ifdef HAVE_WORKING_TZSET
     tzset();
+#endif
     strftime(zone, n, "%Z", p);
 #endif
 }
@@ -1197,7 +1206,9 @@ PyInit_timezone(PyObject *m) {
      */
 #if defined(HAVE_TZNAME) && !defined(__GLIBC__) && !defined(__CYGWIN__)
     PyObject *otz0, *otz1;
+#ifdef HAVE_WORKING_TZSET
     tzset();
+#endif
     PyModule_AddIntConstant(m, "timezone", timezone);
 #ifdef HAVE_ALTZONE
     PyModule_AddIntConstant(m, "altzone", altzone);

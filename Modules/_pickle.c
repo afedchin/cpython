@@ -21,6 +21,9 @@ enum {
 
 /* Pickle opcodes. These must be kept updated with pickle.py.
    Extensive docs are in pickletools.py. */
+#if defined(UNICODE)
+#undef UNICODE
+#endif
 enum opcode {
     MARK            = '(',
     STOP            = '.',
@@ -2900,7 +2903,7 @@ save_dict(PicklerObject *self, PyObject *obj)
 static int
 save_set(PicklerObject *self, PyObject *obj)
 {
-    PyObject *item;
+    PyObject *item = NULL;
     int i;
     Py_ssize_t set_size, ppos = 0;
     Py_hash_t hash;
